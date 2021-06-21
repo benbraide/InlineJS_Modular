@@ -1,0 +1,159 @@
+import { IDirective, DirectiveHandlerReturn, IRegion } from '../typedefs'
+import { Region } from '../region'
+import { DirectiveHandler } from './generic'
+
+export interface DataOptions{
+    $enableOptimizedBinds?: boolean;
+    $locals?: Record<string, any>;
+    $component?: string;
+    $init?: (region?: IRegion) => void;
+}
+
+export class DataDirectiveHandler extends DirectiveHandler{
+    public constructor(){
+        super('data', (region: IRegion, element: HTMLElement, directive: IDirective) => {
+            let proxy = region.GetRootProxy().GetNativeProxy(), data = (DirectiveHandler.Evaluate(region, element, directive.value, true) as DataOptions);
+            if (!Region.IsObject(data)){
+                data = {};
+            }
+
+            if (data.$locals){//Add local fields
+                for (let field in data.$locals){
+                    region.AddLocal(element, field, data.$locals[field]);
+                }
+            }
+
+            if ((data.$enableOptimizedBinds === true || data.$enableOptimizedBinds === false) && region.GetRootElement() === element){
+                region.SetOptimizedBindsState(data.$enableOptimizedBinds);
+            }
+
+            let target: Record<string, any>, scope = (Region.Infer(element) || region).AddElement(element);
+            let specialKeys = ['$locals', '$component', '$enableOptimizedBinds', '$init'], addedKeys = Object.keys(data).filter(key => !specialKeys.includes(key));
+
+            scope.isRoot = true;
+            if (region.GetRootElement() !== element){
+                let key: string;
+                if (data.$component){
+                    key = (region.GetScope(data.$component) ? region.GenerateScopeId() : data.$component);
+                }
+                else{//Generate key
+                    key = region.GenerateScopeId();
+                }
+                
+                target = {};
+                proxy[key] = target;
+                
+                let regionId = region.GetId(), scopeProxy = DirectiveHandler.CreateProxy((prop) =>{
+                    let myRegion = Region.Get(regionId), myProxy = (myRegion ? myRegion.GetRootProxy().GetNativeProxy() : null);
+                    if (!myProxy){
+                        return null;
+                    }
+                    
+                    if (prop in target){
+                        return myProxy[key][prop];
+                    }
+
+                    if (prop === '$parent'){
+                        return myRegion.GetLocal(myRegion.GetElementAncestor(element, 0), '$scope', true);
+                    }
+
+                    if (prop === '$key'){
+                        return key;
+                    }
+                    
+                    return myProxy[key][prop];
+                }, ['$parent', '$key'], (target: object, prop: string | number | symbol, value: any) => {
+                    let myRegion = Region.Get(regionId), myProxy = (myRegion ? myRegion.GetRootProxy().GetNativeProxy() : null);
+                    if (!myProxy){
+                        return false;
+                    }
+                    
+                    if (prop in target || typeof prop !== 'string'){
+                        target[prop] = value;
+                        return true;
+                    }
+
+                    if ('__InlineJS_Target__' in myProxy && prop in myProxy['__InlineJS_Target__']){
+                        myProxy[key][prop] = value;
+                        return true;
+                    }
+                    
+                    if (prop === '$parent' || prop === '$key'){
+                        return false;
+                    }
+
+                    myProxy[key][prop] = value;
+                    return true;
+                });
+                
+                region.AddScope(key, scopeProxy);
+                region.AddLocal(element, '$scope', scopeProxy);
+
+                scope.uninitCallbacks.push(() => {
+                    let myRegion = Region.Get(regionId);
+                    if (myRegion){
+                        myRegion.RemoveScope(key);
+                    }
+                });
+            }
+            else{//Root scope
+                target = proxy['__InlineJS_Target__'];
+                region.AddLocal(element, '$scope', proxy);
+                if (data.$component){
+                    region.AddComponent(element, data.$component);
+                }
+            }
+            
+            addedKeys.forEach((key) => {
+                target[key] = data[key];
+            });
+            
+            if (data.$init){
+                Region.GetEvaluator().GetScopeRegionIds().Push(region.GetId());
+                region.GetState().PushElementContext(element);
+                
+                try{
+                    data.$init.call(proxy, region);
+                }
+                catch{}
+
+                region.GetState().PopElementContext();
+                Region.GetEvaluator().GetScopeRegionIds().Pop();
+            }
+
+            return DirectiveHandlerReturn.Handled;
+        }, true);
+    }
+}
+
+export class LocalsDirectiveHandler extends DirectiveHandler{
+    public constructor(){
+        super('locals', (region: IRegion, element: HTMLElement, directive: IDirective) => {
+            let data = DirectiveHandler.Evaluate(region, element, directive.value);
+            if (Region.IsObject(data)){
+                for (let field in data){
+                    region.AddLocal(element, field, data[field]);
+                }
+            }
+
+            return DirectiveHandlerReturn.Handled;
+        }, false);
+    }
+}
+
+export class ComponentDirectiveHandler extends DirectiveHandler{
+    public constructor(){
+        super('component', (region: IRegion, element: HTMLElement, directive: IDirective) => {
+            return (region.AddComponent(element, directive.value) ? DirectiveHandlerReturn.Handled : DirectiveHandlerReturn.Nil);
+        }, false);
+    }
+}
+
+export class RefDirectiveHandler extends DirectiveHandler{
+    public constructor(){
+        super('ref', (region: IRegion, element: HTMLElement, directive: IDirective) => {
+            region.AddRef(directive.value, element);
+            return DirectiveHandlerReturn.Handled;
+        }, false);
+    }
+}
