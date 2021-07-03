@@ -78,9 +78,9 @@ export class Changes implements IChanges{
         this.Schedule();
     }
 
-    public AddComposed(regionId: string, prop: string, prefix?: string, targetPath?: string): void{
+    public AddComposed(prop: string, prefix?: string, targetPath?: string, regionId?: string): void{
         let change: IChange = {
-            regionId: regionId,
+            regionId: (regionId || this.regionId_),
             type: 'set',
             path: (prefix ? `${prefix}.${prop}` : prop),
             prop: prop,

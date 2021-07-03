@@ -1,6 +1,5 @@
 import { IDirective, DirectiveHandlerReturn, IRegion } from '../typedefs'
 import { Region } from '../region'
-import { NoResult } from '../proxy'
 
 import { DirectiveHandler } from './generic'
 import { ControlHelper, ControlItemInfo } from './control'
@@ -8,19 +7,20 @@ import { ControlHelper, ControlItemInfo } from './control'
 export class IfDirectiveHandler extends DirectiveHandler{
     public constructor(){
         super('if', (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let info = ControlHelper.Init(region, element, () => {
+            let info = ControlHelper.Init(region, element, directive.arg.options, (directive.arg.key === 'animate'), () => {
                 if (itemInfo){
                     ControlHelper.RemoveItem(itemInfo, info);
                 }
-            });
+            }, 'x-if');
 
             if (!info){
-                return DirectiveHandlerReturn.Nil;
+                return DirectiveHandlerReturn.Handled;
             }
             
             let lastValue = false, itemInfo: ControlItemInfo = null, animate = (directive.arg.key === 'animate'), scope = region.GetElementScope(info.template);
             if (!scope){
-                return DirectiveHandlerReturn.Nil;
+                region.GetState().ReportError('Failed to bind \'x-if\' to element');
+                return DirectiveHandlerReturn.Handled;
             }
             
             let ifConditionChange: Array<(isTrue: boolean) => void>, isFirstEntry = true;
@@ -46,7 +46,7 @@ export class IfDirectiveHandler extends DirectiveHandler{
                             callListeners(value);
                         }
                         else if (value){//Insert into parent
-                            itemInfo = ControlHelper.InsertItem(myRegion, info, animate, directive.arg.options, (myItemInfo) => {
+                            itemInfo = ControlHelper.InsertItem(myRegion, info, (myItemInfo) => {
                                 let scope = myRegion.GetElementScope(info.template), cloneScope = myRegion.GetElementScope(myItemInfo.clone);
                                 Object.entries(scope.locals).forEach(([key, item]) => {//Forward locals
                                     cloneScope.locals[key] = item;

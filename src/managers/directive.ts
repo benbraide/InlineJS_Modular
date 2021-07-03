@@ -15,7 +15,10 @@ export class DirectiveManager implements IDirectiveManager{
     }
 
     public RemoveHandler(handler: IDirectiveHandler){
-        let key = handler.GetKey();
+        this.RemoveHandlerByKey(handler.GetKey());
+    }
+
+    public RemoveHandlerByKey(key: string): void{
         if (key in this.handlers_){
             let index = this.mountDirectiveNames_.findIndex(name => (name === key));
             if (index != -1){
@@ -47,5 +50,9 @@ export class DirectiveManager implements IDirectiveManager{
 
     public GetMountDirectiveName(): string{
         return ((this.mountDirectiveNames_.length == 0) ? 'data' : this.mountDirectiveNames_[this.mountDirectiveNames_.length - 1]);
+    }
+
+    public Expunge(element: HTMLElement): void{
+        Object.values(this.handlers_).forEach(handler => handler.Expunge(element));
     }
 }

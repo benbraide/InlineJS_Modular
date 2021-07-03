@@ -175,7 +175,7 @@ export class Processor implements IProcessor{
             expanded: expanded,
             parts: raw.split('-'),
             raw: raw,
-            key: this.GetCamelCaseDirectiveName(raw),
+            key: raw.split('-').join('.'),
             arg: arg,
             value: value,
         };

@@ -58,7 +58,7 @@ export interface IChanges{
     GetRegionId(): string;
     Schedule(): void;
     Add(item: IChange | IBubbledChange): void;
-    AddComposed(regionId: string, prop: string, prefix?: string, targetPath?: string): void;
+    AddComposed(prop: string, prefix?: string, targetPath?: string, regionId?: string): void;
     Subscribe(path: string, callback: ChangeCallbackType): string;
     Unsubscribe(id: string): void;
     AddGetAccess(path: string): void;
@@ -123,6 +123,7 @@ export interface IDirectiveHandler{
     GetKey(): string;
     IsMount(): boolean;
     Handle(region: IRegion, element: HTMLElement, directive: IDirective): DirectiveHandlerReturn;
+    Expunge(element: HTMLElement): void;
 }
 
 export interface IElementScope{
@@ -136,7 +137,6 @@ export interface IElementScope{
     postProcessCallbacks: Array<() => void>;
     eventExpansionCallbacks: Array<(event: string) => string | null>;
     attributeChangeCallbacks: Array<(name: string) => void>;
-    intersectionObservers: Record<string, IntersectionObserver>;
     ifConditionChange: Array<(isTrue: boolean) => void>;
     trapInfoList: Array<ITrapInfo>;
     removed: boolean;
@@ -149,7 +149,7 @@ export interface IElementScope{
 
 export interface ILocalHandler{
     element: HTMLElement;
-    callback: (element: HTMLElement, prop: string, bubble: boolean) => any;
+    callback: (element: HTMLElement, prop: string, bubble: boolean, useNull?: boolean) => any;
 }
 
 export interface IProxy{
@@ -213,8 +213,10 @@ export interface IConfig{
 export interface IDirectiveManager{
     AddHandler(handler: IDirectiveHandler): void;
     RemoveHandler(handler: IDirectiveHandler): void;
+    RemoveHandlerByKey(key: string): void;
     Handle(region: IRegion, element: HTMLElement, directive: IDirective): DirectiveHandlerReturn;
     GetMountDirectiveName(): string;
+    Expunge(element: HTMLElement): void;
 }
 
 export interface IGlobalHandler{
@@ -229,6 +231,7 @@ export interface IGlobalHandler{
 export interface IGlobalManager{
     AddHandler(handler: IGlobalHandler): void;
     RemoveHandler(handler: IGlobalHandler): void;
+    RemoveHandlerByKey(key: string): void;
     GetHandler(regionId: string, key: string): IGlobalHandler;
     Handle(regionId: string, contextElement: HTMLElement, key: string, noResultCreator?: () => INoResult): any;
 }
@@ -240,11 +243,63 @@ export interface IOutsideEventManager{
     Unbind(target: HTMLElement): void;
 }
 
+export type IntersectionObserverHandlerType = (entry?: IntersectionObserverEntry, key?: string, observer?: globalThis.IntersectionObserver) => void;
+
+export interface IIntersectionObserver{
+    GetKey(): string;
+    GetObserver(): IntersectionObserver;
+    GetTarget(): HTMLElement;
+    GetOptions(): IntersectionObserverInit;
+    AddHandler(handler: IntersectionObserverHandlerType): void;
+    RemoveHandler(handler: IntersectionObserverHandlerType): void;
+    Start(handler?: IntersectionObserverHandlerType): void;
+    Stop(): void;
+}
+
+export interface IIntersectionObserverManager{
+    Add(target: HTMLElement, options: IntersectionObserverInit): IIntersectionObserver;
+    Remove(observer: IIntersectionObserver): void;
+    RemoveByKey(key: string, stop?: boolean): void;
+    RemoveAll(target: HTMLElement, stop?: boolean): void;
+}
+
 export interface IAlertHandler{
     Alert(data: any): boolean | void;
     Confirm(data: any, confirmed: any, canceled?: any): void;
     Prompt(data: any, callback: (response: any) => void): void;
     ServerError(err: any): boolean | void;
+}
+
+export interface IAnimationEase{
+    Run(time: number, duration: number): number;
+}
+
+export interface IAnimationActor{
+    Prepare(element: HTMLElement): void;
+    Step(fraction: number, element: HTMLElement): void;
+}
+
+export interface AnimationBindInfo{
+    run: () => void;
+    cancel: (graceful?: boolean) => void;
+    addBeforeHandler: (handler: () => void) => void;
+    removeBeforeHandler: (handler: () => void) => void;
+    addAfterHandler: (handler: (isCanceled?: boolean) => void) => void;
+    removeAfterHandler: (handler: (isCanceled?: boolean) => void) => void;
+}
+
+export interface IAnimation{
+    Bind(target: HTMLElement | ((fraction: number) => void)): AnimationBindInfo;
+}
+
+export interface IParsedAnimation{
+    Run(show: boolean, target?: HTMLElement | ((fraction: number) => void), afterHandler?: (isCanceled?: boolean, show?: boolean) => void, beforeHandler?: (show?: boolean) => void): void;
+    Cancel(show: boolean, target?: HTMLElement | ((fraction: number) => void)): void;
+    Bind(show: boolean, target?: HTMLElement | ((fraction: number) => void)): AnimationBindInfo;
+}
+
+export interface IAnimationParser{
+    Parse(options: Array<string>, target?: HTMLElement | ((fraction: number) => void)): IParsedAnimation;
 }
 
 export interface IRegion{
@@ -253,6 +308,7 @@ export interface IRegion{
     SetDoneInit(): void;
     GetDoneInit(): boolean;
     GenerateScopeId(): string;
+    GenerateDirectiveScopeId(prefix?: string, suffix?: string): string;
     GetId(): string;
     GetComponentKey(): string;
     AddScope(key: string, value: object): void;
@@ -271,6 +327,7 @@ export interface IRegion{
     GetDirectiveManager(): IDirectiveManager;
     GetGlobalManager(): IGlobalManager;
     GetOutsideEventManager(): IOutsideEventManager;
+    GetIntersectionObserverManager(): IIntersectionObserverManager;
     SetAlertHandler(handler: IAlertHandler): IAlertHandler;
     GetAlertHandler(): IAlertHandler;
     Alert(data: any): boolean | void;
@@ -289,11 +346,12 @@ export interface IRegion{
     AddNextTickCallback(callback: () => void): void;
     ExecuteNextTick(): void;
     AddLocal(element: HTMLElement | string, key: string, value: any): void;
-    GetLocal(element: HTMLElement | string, key: string, bubble?: boolean): any;
+    GetLocal(element: HTMLElement | string, key: string, bubble?: boolean, useNull?: boolean): any;
     AddLocalHandler(element: HTMLElement, callback: (element: HTMLElement, prop: string, bubble: boolean) => any): void;
     RemoveLocalHandler(element: HTMLElement): void;
     GetObserver(): MutationObserver;
     ExpandEvent(event: string, element: HTMLElement | string | true): string;
+    ForwardEventBinding(element: HTMLElement, directiveValue: string, directiveOptions: Array<string>, event: string): DirectiveHandlerReturn;
     Call(target: (...args: any) => any, ...args: any): any;
     AddTemp(callback: () => any): string;
     CallTemp(key: string): any;
@@ -320,4 +378,25 @@ export interface IBootstrap{
     Attach(mount?: HTMLElement): void;
 }
 
-export type AnimatorCallbackType = (show: boolean, beforeCallback?: (show?: boolean) => void, afterCallback?: (show?: boolean) => void, args?: any) => void;
+export interface IFetch{
+    Reload(): void;
+    SetProp(prop: string, value: any, force?: boolean): void;
+    Get(region?: IRegion): Promise<any>;
+    Watch(region?: IRegion, get?: boolean): void;
+    EndWatch(): void;
+}
+
+export interface Point{
+    x: number,
+    y: number,
+}
+
+export interface Size{
+    width: number,
+    height: number,
+}
+
+export interface NamedDirection{
+    x: 'up' | 'right' | 'down' | 'left' | 'none';
+    y: 'up' | 'right' | 'down' | 'left' | 'none';
+}

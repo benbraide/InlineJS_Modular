@@ -1,4 +1,4 @@
-import { IRegion } from '../typedefs'
+import { IRegion, IParsedAnimation } from '../typedefs'
 import { Region } from '../region'
 import { DirectiveHandler } from './generic'
 
@@ -7,6 +7,7 @@ export interface ControlInfo{
     template: HTMLTemplateElement;
     parent: HTMLElement;
     blueprint: HTMLElement;
+    animator: IParsedAnimation;
     subscriptions?: Record<string, Array<string>>;
 }
 
@@ -17,18 +18,25 @@ export interface ControlOnLoadInfo{
 
 export interface ControlItemInfo{
     clone: HTMLElement;
-    animator: any/*AnimatorCallbackType*/;
     onLoadList: Array<ControlOnLoadInfo>;
 }
 
 export class ControlHelper{
-    public static Init(region: IRegion, element: HTMLElement, onUninit: () => void){
+    public static Init(region: IRegion, element: HTMLElement, options: Array<string>, animate: boolean, onUninit: () => void, directiveName?: string){
+        directiveName = (directiveName || 'x-if | x-each');
+        if (region.GetRootElement() === element){
+            region.GetState().ReportError(`\'${directiveName}\' cannot be bound to the root element`);
+            return null;
+        }
+        
         if (!element.parentElement || !(element instanceof HTMLTemplateElement) || element.content.children.length != 1){
+            region.GetState().ReportError(`\'${directiveName}\' requires a single element child`);
             return null;
         }
         
         let scope = region.AddElement(element);
         if (!scope){
+            region.GetState().ReportError(`Failed to bind \'${directiveName}\' to element`);
             return null;
         }
 
@@ -36,6 +44,7 @@ export class ControlHelper{
             regionId: region.GetId(),
             template: element,
             parent: element.parentElement,
+            animator: Region.ParseAnimation(options, null, animate),
             blueprint: (element.content.firstElementChild as HTMLElement),
         };
 
@@ -56,14 +65,12 @@ export class ControlHelper{
         return info;
     }
 
-    public static InsertItem(region: IRegion, info: ControlInfo, animate: boolean, options: Array<string>, callback?: (itemInfo?: ControlItemInfo) => void, offset = 0): ControlItemInfo{
+    public static InsertItem(region: IRegion, info: ControlInfo, callback?: (itemInfo?: ControlItemInfo) => void, offset = 0): ControlItemInfo{
         let clone = (info.blueprint.cloneNode(true) as HTMLElement);
-        let animator = null/*(animate ? DirectiveHandler.GetAnimator(Region.Get(info.regionId), true, clone, options) : null)*/;
 
         DirectiveHandler.InsertOrAppendChildElement(region, info.parent, clone, offset, info.template);//Temporarily insert element into DOM
         let itemInfo = {
             clone: clone,
-            animator: animator,
             onLoadList: new Array<ControlOnLoadInfo>(),
         };
         
@@ -91,16 +98,11 @@ export class ControlHelper{
             Region.GetProcessor().All(myRegion, element);
         };
 
-        if (animator){//Animate view
-            animator(true, null, () => {
-                if (clone.parentElement){//Execute directives
-                    insert(clone, info, 0);
-                }
-            });
-        }
-        else{//Immediate insertion
-            insert(clone, info, 0);
-        }
+        info.animator.Run(true, clone, (isCanceled) => {
+            if (!isCanceled && clone.parentElement){//Animation has ended
+                insert(clone, info, 0);
+            }
+        });
 
         return itemInfo;
     }
@@ -117,17 +119,11 @@ export class ControlHelper{
             }
         };
 
-        if (itemInfo.animator){//Animate view
-            itemInfo.animator(false, null, () => {
-                if (itemInfo.clone.parentElement){
-                    itemInfo.clone.parentElement.removeChild(itemInfo.clone);
-                    afterRemove();
-                }
-            });
-        }
-        else if (itemInfo.clone.parentElement){//Immediate removal
-            itemInfo.clone.parentElement.removeChild(itemInfo.clone);
-            afterRemove();
-        }
+        info.animator.Run(false, itemInfo.clone, (isCanceled) => {
+            if (!isCanceled && itemInfo.clone.parentElement){//Animation has ended
+                itemInfo.clone.parentElement.removeChild(itemInfo.clone);
+                afterRemove();
+            }
+        });
     }
 }

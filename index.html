@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InlineJS</title>
+    <style>
+        [x-cloak="hide"]{
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>InlineJS</h1>
+    <p x-typewriter.delete.cursor.lazy="['My very first typewriting', 'Another typing', ['Final ', {text: 'subsequent', tagName: 'p', attributes: {style: 'font-weight: bold'}}, ' tries']]" x-data></p>
+    <div x-component="first" x-data="{email: 'user.yahoo@yahoo.com', name: 'John Doe', state: true, getName(){ return this.name }}">
+        <h2 x-style:color="color" x-on:click="color = 'red'">First Component</h2>
+        <div>
+            <span>Name: </span>
+            <strong x-text="name"></strong>
+        </div>
+        <div>
+            <span>Name (by getName): </span>
+            <strong x-text="getName"></strong>
+        </div>
+        <div>
+            <span>Name (by $component): </span>
+            <strong x-text="$component('first').name"></strong>
+        </div>
+        <div>
+            <span>Email: </span>
+            <strong x-text="email"></strong>
+        </div>
+        <div>
+            <input type="text" x-model="name">
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" x-model="state"> State
+            </label>
+        </div>
+        <div>
+            <span>State: </span>
+            <strong x-text="state"></strong>
+        </div>
+        <template x-if:animate.show="state">
+            <p x-uninit="console.log('State was changed to false', this)">State is true</p>
+        </template>
+        <template x-if:animate.show="!state">
+            <p x-uninit="console.log('State was changed to true', this)">State is false</p>
+        </template>
+    </div>
+    <div x-data="{list: ['First', 'Second', 'Third', 'Last']}">
+        <h2>Array Loop</h2>
+        <template x-each:animate.height="list as item">
+            <div style="overflow: hidden;">
+                <span>Index: </span><strong x-text="$each.index"></strong> | 
+                <span>Value: </span><strong x-text="$each.value"></strong> | 
+                <span>Value(alt): </span><strong x-text="item"></strong> | 
+                <span>Count: </span><strong x-text="$each.count"></strong>
+            </div>
+        </template>
+        <button x-on:click="list.length < 5 ? list.splice(1, 0, 'Pushed!') : list.splice(1, 1)">Click me</button>
+    </div>
+    <div x-data="{range: 9}">
+        <h2>Range Loop</h2>
+        <template x-each:animate.height.count="range">
+            <div style="overflow: hidden;">
+                <span>Index: </span><strong x-text="$each.index"></strong> | 
+                <span>Value: </span><strong x-text="$each.value"></strong> | 
+                <span>Count: </span><strong x-text="$each.count"></strong>
+            </div>
+        </template>
+        <button x-on:click="range = ((range == 9) ? 18 : 9)">Change Range</button>
+        <button x-on:click="$parent.setAttribute('x-init', '$console.log(this, `Executed attribute`)')">Insert Attribute</button>
+    </div>
+    <div x-data="{list: {name: {first: 'Anon Legion', second:'Anon Legion2'}, email: {first:'anon.legion@crypt.co',second:'a@b.c'}, age: {first:27,second:45}, sex: {first:'MALE',second:'FEMALE'}}}">
+        <h2>Map Loop</h2>
+        <template x-each:animate.zoom-height="list as item">
+            <div>
+                <span>Index: </span><strong x-text="$each.index"></strong> | 
+                <span>Value: </span><strong x-text="$each.value.first"></strong> | <strong x-text="$each.value.second"></strong> | 
+                <span>Value(alt): </span><strong x-text="item.first"></strong> | <strong x-text="item.second"></strong> | 
+                <span>Count: </span><strong x-text="$each.count"></strong>
+            </div>
+        </template>
+        <button x-on:click="('new' in $raw(list)) ? delete list['new'] : list['new'] = {first: 'World', second:'Order'}">Click me</button>
+    </div>
+    <div x-data="cartData()" x-component="cart">
+        <h2>Product Cart (<span x-text="getCount()"></span>)</h2>
+        <hr>
+        <template x-each="list">
+            <div>
+                <div>
+                    <span>SKU: </span><strong x-text="$each.index"></strong>
+                </div>
+                <div>
+                    <span>Title: </span><strong x-text="$each.value.title"></strong>
+                </div>
+                <div>
+                    <span>Price: </span><strong x-text="$each.value.price"></strong>
+                </div>
+                <div>
+                    <span>Quantity: </span><strong x-text="$each.value.quantity"></strong>
+                </div>
+                <div>
+                    <button x-on:click="$each.value.quantity += (($each.value.quantity > 0) ? -1 : 0)">-</button>
+                    <button x-on:click="$each.value.quantity += 1">+</button>
+                </div>
+                <hr>
+            </div>
+        </template>
+    </div>
+    <div x-data="{list: [], add(form){this.list.push({text:this.input, editing: false}); form.reset()}, remove(index){this.list.splice(index, 1)}}">
+        <h2>TODO List</h2>
+        <form action="" x-on:submit.prevent="add(this)">
+            <input type="text" placeholder="Type here" required x-model.out="input">
+            <button type="submit">Add</button>
+        </form>
+        <hr>
+        <ul style="transition: all 0.3s ease;">
+            <template x-each:animate="list">
+                <li style="margin-top: 5px;">
+                    <span style="text-transform: uppercase" x-text="$each.value.text" x-show="!$each.value.editing"></span>
+                    <input type="text" x-model="$each.value.text" x-animate:transition.width="$each.value.editing" x-on:keydown.enter="$each.value.editing = false">
+                    <button style="background-color: transparent; color: gray; border: 1px solid gray" x-on:click="$each.value.editing = true" x-show="!$each.value.editing">...</button>
+                    <button style="background-color: transparent; color: red; border: 1px solid red" x-on:click="remove($each.index)">x</button>
+                </li>
+            </template>
+        </ul>
+    </div>
+    <script src="/dist/inlinejs-extended.js"></script>
+    <script>
+        function cartData(){
+            return {
+                list: {
+                    'PRD_0001': {
+                        title: 'White Bread',
+                        price: 4.59,
+                        quantity: 2
+                    },
+                    'PRD_0080': {
+                        title: 'Peanut Butter',
+                        price: 7.02,
+                        quantity: 5
+                    }
+                },
+                getCount(){
+                    let count = 0;
+                    for (let key in this.list){
+                        count += this.list[key].quantity;
+                    }
+                    return count;
+                }
+            };
+        }
+        
+        window.InlineJS.Bootstrap.Attach();
+    </script>
+</body>
+</html>

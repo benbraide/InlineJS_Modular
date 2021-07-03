@@ -1,5 +1,4 @@
 import { IDirective, DirectiveHandlerReturn, IRegion } from '../typedefs'
-import { Region } from '../region'
 import { DirectiveHandler } from './generic'
 
 export class CloakDirectiveHandler extends DirectiveHandler{

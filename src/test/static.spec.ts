@@ -54,7 +54,7 @@ describe('x-static directive', () => {
             </div>
         `;
     
-        let bootstrap = new Bootstrap();
+        let bootstrap = new Bootstrap(true);
         bootstrap.Attach();
     
         expect(document.querySelector('span').textContent).equal('bar');

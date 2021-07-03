@@ -22,17 +22,18 @@ export interface EachOptions{
 export class EachDirectiveHandler extends DirectiveHandler{
     public constructor(){
         super('each', (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let info = ControlHelper.Init(region, element, () => {
+            let info = ControlHelper.Init(region, element, directive.arg.options, (directive.arg.key === 'animate'), () => {
                 empty(Region.Get(info.regionId));
-            }), isCount = false, isReverse = false;
+            }, 'x-each'), isCount = false, isReverse = false;
 
             if (!info){
-                return DirectiveHandlerReturn.Nil;
+                return DirectiveHandlerReturn.Handled;
             }
 
             let scope = region.GetElementScope(info.template);
             if (!scope){
-                return DirectiveHandlerReturn.Nil;
+                region.GetState().ReportError('Failed to bind \'x-each\' to element');
+                return DirectiveHandlerReturn.Handled;
             }
             
             if (directive.arg){
@@ -58,15 +59,9 @@ export class EachDirectiveHandler extends DirectiveHandler{
                 expression = directive.value;
             }
 
-            let scopeId = region.GenerateScopeId();
+            let scopeId = region.GenerateDirectiveScopeId(null, '_each');
             let addSizeChange = (myRegion: IRegion) => {
-                myRegion.GetChanges().Add({
-                    regionId: info.regionId,
-                    type: 'set',
-                    path: `${scopeId}.$each.count`,
-                    prop: 'count',
-                    origin: myRegion.GetChanges().GetOrigin()
-                });
+                myRegion.GetChanges().AddComposed('count', scopeId);
             };
 
             let locals = (myRegion: IRegion, cloneInfo: EachCloneInfo) => {
@@ -78,14 +73,14 @@ export class EachDirectiveHandler extends DirectiveHandler{
                 cloneScope.locals['$each'] = DirectiveHandler.CreateProxy((prop) => {
                     let innerRegion = Region.Get(info.regionId);
                     if (prop === 'count'){
-                        innerRegion.GetChanges().AddGetAccess(`${scopeId}.$each.count`);
+                        innerRegion.GetChanges().AddGetAccess(`${scopeId}.count`);
                         return options.count;
                     }
                     
                     if (prop === 'index'){
                         if (typeof cloneInfo.key === 'number'){
                             let myScope = innerRegion.AddElement(cloneInfo.itemInfo.clone);
-                            innerRegion.GetChanges().AddGetAccess(`${myScope.key}.$each.index`);
+                            innerRegion.GetChanges().AddGetAccess(`${scopeId}.${myScope.key}.index`);
                         }
                         
                         return cloneInfo.key;
@@ -119,7 +114,7 @@ export class EachDirectiveHandler extends DirectiveHandler{
                         for (let index = key; index < (options.clones as Array<EachCloneInfo>).length; ++index){
                             let cloneInfo = (options.clones as Array<EachCloneInfo>)[index], myScope = myRegion.GetElementScope(cloneInfo.itemInfo.clone);
                             if (myScope){
-                                ProxyHelper.AddChanges(myRegion.GetChanges(), 'set', `${myScope.key}.$each.index`, 'index');
+                                ProxyHelper.AddChanges(myRegion.GetChanges(), 'set', `${scopeId}.${myScope.key}.index`, 'index');
                             }
                             
                             ++(cloneInfo.key as number);
@@ -129,7 +124,7 @@ export class EachDirectiveHandler extends DirectiveHandler{
                         key = (options.clones as Array<EachCloneInfo>).length;
                     }
 
-                    ControlHelper.InsertItem(myRegion, info, animate, directive.arg.options, (itemInfo) => {
+                    ControlHelper.InsertItem(myRegion, info, (itemInfo) => {
                         if (key < (options.clones as Array<EachCloneInfo>).length){
                             (options.clones as Array<EachCloneInfo>).splice((key as number), 0, {
                                 key : key,
@@ -147,7 +142,7 @@ export class EachDirectiveHandler extends DirectiveHandler{
                     }, key);
                 }
                 else{//Map
-                    ControlHelper.InsertItem(myRegion, info, animate, directive.arg.options, (itemInfo) => {
+                    ControlHelper.InsertItem(myRegion, info, (itemInfo) => {
                         (options.clones as Record<string, EachCloneInfo>)[key] = {
                             key : key,
                             itemInfo: itemInfo,
@@ -201,7 +196,7 @@ export class EachDirectiveHandler extends DirectiveHandler{
                         (options.clones as Array<EachCloneInfo>).forEach((cloneInfo) => {
                             let myScope = myRegion.GetElementScope(cloneInfo.itemInfo.clone);
                             if (myScope){
-                                ProxyHelper.AddChanges(myRegion.GetChanges(), 'set', `${myScope.key}.$each.index`, 'index');
+                                ProxyHelper.AddChanges(myRegion.GetChanges(), 'set', `${scopeId}.${myScope.key}.index`, 'index');
                             }
                             
                             (cloneInfo.key as number) -= count;
@@ -225,7 +220,7 @@ export class EachDirectiveHandler extends DirectiveHandler{
                         for (let i = (index + itemsCount); i < (options.clones as Array<EachCloneInfo>).length; ++i){
                             let cloneInfo = (options.clones as Array<EachCloneInfo>)[i], myScope = myRegion.GetElementScope(cloneInfo.itemInfo.clone);
                             if (myScope){
-                                ProxyHelper.AddChanges(myRegion.GetChanges(), 'set', `${myScope.key}.$each.index`, 'index');
+                                ProxyHelper.AddChanges(myRegion.GetChanges(), 'set', `${scopeId}.${myScope.key}.index`, 'index');
                             }
                             
                             (cloneInfo.key as number) -= removedClones.length;

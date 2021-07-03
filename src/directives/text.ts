@@ -6,7 +6,7 @@ export class TextHelper{
     public static Bind(region: IRegion, element: HTMLElement, directive: IDirective, isHtml: boolean, callback?: () => boolean){
         let onChange: (value: any) => void, regionId = region.GetId();
         if (isHtml){
-            onChange = (value: any) => element.innerHTML = DirectiveHandler.ToString(value);
+            onChange = (value: any) => Region.InsertHtml(element, DirectiveHandler.ToString(value));
         }
         else if (element instanceof HTMLInputElement){
             if (element.type === 'checkbox' || element.type === 'radio'){

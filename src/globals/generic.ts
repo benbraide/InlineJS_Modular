@@ -1,7 +1,10 @@
 import { IGlobalHandler, IGlobalManager } from '../typedefs'
+import { Region } from '../region'
 
 export class GlobalHandler implements IGlobalHandler{
-    public constructor(private key_: string, private value_: any, private canHandle_?: (regionId?: string) => boolean,
+    protected static region_ = new Region(document.createElement('template'));
+    
+    public constructor(protected key_: string, private value_: any, private canHandle_?: (regionId?: string) => boolean,
         private beforeAdd_?: (manager?: IGlobalManager) => boolean, private afterAdd_?: (manager?: IGlobalManager) => void, private afterRemove_?: (manager?: IGlobalManager) => void){}
     
     public GetKey(): string{

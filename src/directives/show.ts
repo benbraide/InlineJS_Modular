@@ -10,37 +10,24 @@ export class ShowDirectiveHandler extends DirectiveHandler{
                 showValue = 'block';
             }
 
-            let regionId = region.GetId(), animator: (...args: Array<any>) => void = null/*CoreDirectiveHandlers.GetAnimator(region, (directive.arg.key === 'animate'), element, directive.arg.options, false)*/;
-            if (animator){
-                let lastValue: boolean = null, showOnly = directive.arg.options.includes('show'), hideOnly = (!showOnly && directive.arg.options.includes('hide'));
-                region.GetState().TrapGetAccess(() => {
-                    lastValue = !! DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value);
-                    element.style.display = (lastValue ? showValue : 'none');
-                }, () => {
-                    if (lastValue != (!! DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value))){
-                        lastValue = !lastValue;
-                        if ((lastValue ? !hideOnly : !showOnly)){
-                            animator(lastValue, (show: boolean) => {//Animation is starting
-                                if (show){
-                                    element.style.display = showValue;
-                                }
-                            }, (show: boolean) => {//Animation is done
-                                if (!show){
-                                    element.style.display = 'none';
-                                }
-                            });
+            let regionId = region.GetId(), animator = Region.ParseAnimation(directive.arg.options, element, (directive.arg.key === 'animate')), lastValue: boolean = null;
+            region.GetState().TrapGetAccess(() => {
+                lastValue = !! DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value);
+                element.style.display = (lastValue ? showValue : 'none');
+            }, () => {
+                if (lastValue != (!! DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value))){
+                    animator.Cancel(lastValue);
+                    animator.Run((lastValue = !lastValue), element, (isCanceled, show) => {//Called after animation
+                        if (!show && !isCanceled){
+                            element.style.display = 'none';//Hide element after animation
                         }
-                        else{//No animation
-                            element.style.display = (lastValue ? showValue : 'none');
+                    }, (show) => {//Called before animation runs
+                        if (show){
+                            element.style.display = showValue;//Show element before animation
                         }
-                    }
-                }, element);
-            }
-            else{
-                region.GetState().TrapGetAccess(() => {
-                    element.style.display = (DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value) ? showValue : 'none');
-                }, true, element);
-            }
+                    });
+                }
+            }, element);
             
             return DirectiveHandlerReturn.Handled;
         }, false);

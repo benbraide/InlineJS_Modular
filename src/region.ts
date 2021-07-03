@@ -11,10 +11,14 @@ import {
     IDirectiveManager,
     IGlobalManager,
     IOutsideEventManager,
+    IIntersectionObserverManager,
     IAlertHandler,
     ILocalHandler,
     IRootElement,
     ITrapInfo,
+    AnimationBindInfo,
+    IParsedAnimation,
+    IAnimationParser,
 } from './typedefs'
 
 import { Stack } from './stack'
@@ -26,7 +30,30 @@ import { Processor } from './processor'
 import { DirectiveManager } from './managers/directive'
 import { GlobalManager } from './managers/global'
 import { OutsideEventManager } from './managers/outside_event'
+import { IntersectionObserverManager } from './managers/observers/intersection'
 import { RootProxy, NoResult } from './proxy'
+
+class NoAnimation implements IParsedAnimation{
+    public Run(show: boolean, target?: HTMLElement | ((fraction: number) => void), afterHandler?: (isCanceled?: boolean, show?: boolean) => void, beforeHandler?: (show?: boolean) => void): void{
+        if (beforeHandler){
+            beforeHandler(show);
+        }
+
+        if (target && typeof target === 'function'){
+            target(show ? 1 : 0);
+        }
+        
+        if (afterHandler){
+            afterHandler(false, show);
+        }
+    }
+
+    public Cancel(show: boolean, target?: HTMLElement | ((fraction: number) => void)): void{}
+
+    public Bind(show: boolean, target?: HTMLElement | ((fraction: number) => void)): AnimationBindInfo{
+        return null;
+    }
+}
 
 export class Region implements IRegion{
     private static components_: Record<string, string> = {};
@@ -42,10 +69,13 @@ export class Region implements IRegion{
     private static evaluator_ = new Evaluator(Region.Get, Region.GetElementKeyName(), Region.scopeRegionIds_);
     private static config_ = new Config();
     private static directiveManager_ = new DirectiveManager();
-    private static globalManager_ = new GlobalManager();
+    private static globalManager_ = new GlobalManager(Region.Get, Region.Infer);
     private static outsideEventManager_ = new OutsideEventManager();
     private static alertHandler_: IAlertHandler = null;
+
     private static processor_ = new Processor(Region.config_, Region.directiveManager_);
+    private static animationParser_: IAnimationParser = null;
+    private static noAnimation_ = new NoAnimation();
     
     private id_: string = null;
     private componentKey_ = '';
@@ -59,10 +89,12 @@ export class Region implements IRegion{
     private proxies_: Record<string, IProxy> = {};
     private refs_: Record<string, HTMLElement> = {};
     private observer_: MutationObserver = null;
+    private intersectionObserverManager_: IIntersectionObserverManager = null;
     private localHandlers_ = new Array<ILocalHandler>();
     private nextTickCallbacks_ = new Array<() => void>();
     private tempCallbacks_: Record<string, () => any> = {};
     private scopeId_ = 0;
+    private directiveScopeId_ = 0;
     private tempCallbacksId_ = 0;
     private enableOptimizedBinds_ = true;
 
@@ -152,6 +184,10 @@ export class Region implements IRegion{
 
     public GenerateScopeId(){
         return `${this.id_}_scope_${this.scopeId_++}`;
+    }
+
+    public GenerateDirectiveScopeId(prefix?: string, suffix?: string){
+        return `${prefix || ''}${this.id_}_dirscope_${this.directiveScopeId_++}${suffix || ''}`;
     }
 
     public GetId(){
@@ -268,6 +304,10 @@ export class Region implements IRegion{
         return Region.outsideEventManager_;
     }
 
+    public GetIntersectionObserverManager(): IIntersectionObserverManager{
+        return (this.intersectionObserverManager_ = (this.intersectionObserverManager_ || new IntersectionObserverManager(this.id_)));
+    }
+
     public SetAlertHandler(handler: IAlertHandler): IAlertHandler{
         return Region.SetAlertHandler(handler);
     }
@@ -344,7 +384,6 @@ export class Region implements IRegion{
             postProcessCallbacks: new Array<() => void>(),
             eventExpansionCallbacks: new Array<(event: string) => string | null>(),
             attributeChangeCallbacks: new Array<(name: string) => void>(),
-            intersectionObservers: {},
             ifConditionChange: null,
             trapInfoList: new Array<ITrapInfo>(),
             removed: false,
@@ -376,14 +415,18 @@ export class Region implements IRegion{
                 }
             });
 
-            if (!preserve && !scope.preserve && !scope.preserveSubscriptions){
-                Region.UnsubscribeAll(scope.changeRefs);
-
-                scope.changeRefs = [];
-                scope.element.removeAttribute(Region.GetElementKeyName());
+            if (!preserve && !scope.preserve){
+                Region.directiveManager_.Expunge(scope.element);
+                if (this.intersectionObserverManager_){
+                    this.intersectionObserverManager_.RemoveAll(scope.element);
+                }
                 
-                Object.keys(scope.intersectionObservers).forEach(key => scope.intersectionObservers[key].unobserve(scope.element));
-                scope.intersectionObservers = {};
+                if (!scope.preserveSubscriptions){
+                    Region.UnsubscribeAll(scope.changeRefs);
+
+                    scope.changeRefs = [];
+                    scope.element.removeAttribute(Region.GetElementKeyName());
+                }
             }
             else{
                 scope.preserve = !(preserve = true);
@@ -486,11 +529,11 @@ export class Region implements IRegion{
         }
     }
 
-    public GetLocal(element: HTMLElement | string, key: string, bubble: boolean = true): any{
+    public GetLocal(element: HTMLElement | string, key: string, bubble: boolean = true, useNull = false): any{
         if (typeof element !== 'string'){
             for (let i = 0; i < this.localHandlers_.length; ++i){
                 if (this.localHandlers_[i].element === element){
-                    return this.localHandlers_[i].callback(element, key, bubble);
+                    return this.localHandlers_[i].callback(element, key, bubble, useNull);
                 }
             }
         }
@@ -501,7 +544,7 @@ export class Region implements IRegion{
         }
 
         if (!bubble || typeof element === 'string'){
-            return new NoResult();
+            return (useNull ? null : new NoResult());
         }
         
         for (let ancestor = this.GetElementAncestor(element, 0); ancestor; ancestor = this.GetElementAncestor(ancestor, 0)){
@@ -511,10 +554,10 @@ export class Region implements IRegion{
             }
         }
 
-        return new NoResult();
+        return (useNull ? null : new NoResult());
     }
 
-    public AddLocalHandler(element: HTMLElement, callback: (element: HTMLElement, prop: string, bubble: boolean) => any){
+    public AddLocalHandler(element: HTMLElement, callback: (element: HTMLElement, prop: string, bubble: boolean, useNull?: boolean) => any){
         this.localHandlers_.push({
             element: element,
             callback: callback
@@ -543,6 +586,21 @@ export class Region implements IRegion{
         }
         
         return event;
+    }
+
+    public ForwardEventBinding(element: HTMLElement, directiveValue: string, directiveOptions: Array<string>, event: string){
+        return Region.directiveManager_.Handle(this, element, {
+            original: 'x-on',
+            expanded: 'x-on',
+            parts: ['on'],
+            raw: 'on',
+            key: 'on',
+            arg: {
+                key: event,
+                options: directiveOptions,
+            },
+            value: directiveValue,
+        });
     }
 
     public Call(target: (...args: any) => any, ...args: any){
@@ -675,8 +733,20 @@ export class Region implements IRegion{
         return (Region.alertHandler_ ? Region.alertHandler_.Alert(data) : false);
     }
 
+    public static SetAnimationParser(parser: IAnimationParser){
+        Region.animationParser_ = parser;
+    }
+
+    public static GetAnimationParser(){
+        return Region.animationParser_;
+    }
+    
+    public static ParseAnimation(options: Array<string>, target?: HTMLElement | ((fraction: number) => void), parse = true): IParsedAnimation{
+        return ((Region.animationParser_ && parse) ? Region.animationParser_.Parse(options, target) : Region.noAnimation_);
+    }
+
     public static Get(id: string): IRegion{
-        return ((id in Region.entries_) ? Region.entries_[id] : null);
+        return ((id && id in Region.entries_) ? Region.entries_[id] : null);
     }
 
     public static GetCurrent(id: string): IRegion{
@@ -834,6 +904,70 @@ export class Region implements IRegion{
         return copy;
     }
 
+    public static ToString(value: any): string{
+        if (typeof value === 'string'){
+            return value;
+        }
+
+        if (value === null || value === undefined){
+            return '';
+        }
+
+        if (value === true){
+            return 'true';
+        }
+
+        if (value === false){
+            return 'false';
+        }
+
+        if (typeof value === 'object' && '__InlineJS_Target__' in value){
+            return Region.ToString(value['__InlineJS_Target__']);
+        }
+
+        if (Region.IsObject(value) || Array.isArray(value)){
+            return JSON.stringify(value);
+        }
+
+        return value.toString();
+    }
+
+    public static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (target: object, prop: string | number | symbol, value: any) => boolean, target?: any){
+        let hasTarget = !! target;
+        let handler = {
+            get(target: object, prop: string | number | symbol): any{
+                if (typeof prop === 'symbol' || (typeof prop === 'string' && prop === 'prototype')){
+                    return Reflect.get(target, prop);
+                }
+
+                return getter(prop.toString());
+            },
+            set(target: object, prop: string | number | symbol, value: any){
+                if (hasTarget){
+                    return (setter ? setter(target, prop, value) : Reflect.set(target, prop, value));    
+                }
+
+                return (setter && setter(target, prop, value));
+            },
+            deleteProperty(target: object, prop: string | number | symbol){
+                return (hasTarget ? Reflect.deleteProperty(target, prop) : false);
+            },
+            has(target: object, prop: string | number | symbol){
+                if (Reflect.has(target, prop)){
+                    return true;
+                }
+
+                if (!contains){
+                    return false;
+                }
+
+                return ((typeof contains === 'function') ? contains(prop.toString()) : contains.includes(prop.toString()));
+            }
+        };
+
+        return new window.Proxy((target || {}), handler);
+    }
+
     public static UnsubscribeAll(list: Array<IChangeRefInfo>){
         (list || []).forEach((info) => {
             let region = Region.Get(info.regionId);
@@ -843,7 +977,33 @@ export class Region implements IRegion{
         });
     }
 
-    public static InsertHtml(target: HTMLElement, value: string, replace = true, append = true, region?: IRegion){}
+    public static InsertHtml(target: HTMLElement, value: string, replace = true, append = true, region?: IRegion){
+        if (replace){//Remove all child nodes
+            Array.from(target.childNodes).forEach(child => target.removeChild(child));
+        }
+        
+        let tmpl = document.createElement('template');
+        tmpl.innerHTML = value;
+
+        let childNodes = [...tmpl.content.childNodes].filter(child => !(child instanceof HTMLScriptElement));
+        if (replace || append){
+            target.append(...childNodes);
+        }
+        else{//Insert before child nodes
+            target.prepend(...childNodes);
+        }
+
+        if (region && !region.GetDoneInit()){//Mutation observer not yet bound
+            let scope = region.GetElementScope(target);
+            if (scope){//Schedule processing
+                scope.postProcessCallbacks.push(() => {
+                    Region.processor_.All(region, target, {
+                        checkDocument: true,
+                    });
+                });
+            }
+        }
+    }
 
     public static GetElementKeyName(){
         return '__inlinejs_key__';

@@ -2,16 +2,28 @@ import { IBootstrap } from './typedefs'
 import { Region } from './region'
 
 export class Bootstrap implements IBootstrap{
+    public constructor(private isTest_ = false){}
+    
     public Attach(mount?: HTMLElement): void{
         Region.PushPostProcessCallback();
 
-        let config = Region.GetConfig(), mountKey = Region.GetDirectiveManager().GetMountDirectiveName();
-        let mountAttributes = [
-            config.GetDirectiveName(mountKey, true),
-            config.GetDirectiveName(mountKey, false),
-            `${config.GetDirectiveName('static', true)}:${mountKey}`,
-            `${config.GetDirectiveName('static', false)}:${mountKey}`,
-        ];
+        let config = Region.GetConfig(), mountKey = Region.GetDirectiveManager().GetMountDirectiveName(), mountAttributes: Array<string>;
+        if (this.isTest_){
+            mountAttributes = [
+                config.GetDirectiveName(mountKey, true),
+                config.GetDirectiveName(mountKey, false),
+                `${config.GetDirectiveName('static', true)}:${mountKey}`,
+                `${config.GetDirectiveName('static', false)}:${mountKey}`,
+            ];
+        }
+        else{
+            mountAttributes = [
+                config.GetDirectiveName(mountKey, true),
+                config.GetDirectiveName(mountKey, false),
+                `${config.GetDirectiveName('static', true)}\\:${mountKey}`,
+                `${config.GetDirectiveName('static', false)}\\:${mountKey}`,
+            ];
+        }
         
         mountAttributes.forEach((attrName) => {
             (mount || document).querySelectorAll(`[${attrName}]`).forEach((element) => {

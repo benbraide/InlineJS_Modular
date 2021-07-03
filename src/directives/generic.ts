@@ -2,8 +2,16 @@ import { IDirectiveHandler, IDirective, DirectiveHandlerReturn, IRegion } from '
 import { Region } from '../region'
 import { Value } from '../proxy'
 
+interface DataStorageInfo{
+    data: any;
+    element?: HTMLElement;
+}
+
 export class DirectiveHandler implements IDirectiveHandler{
-    public constructor(private key_: string, private handler_: (region: IRegion, element: HTMLElement, directive: IDirective) => DirectiveHandlerReturn, private isMount_ = false){}
+    private dataStorage_: Record<string, DataStorageInfo> = {};
+    private dataStorageCounter_ = 0;
+    
+    public constructor(protected key_: string, private handler_: (region: IRegion, element: HTMLElement, directive: IDirective) => DirectiveHandlerReturn, private isMount_ = false){}
     
     public GetKey(): string{
         return this.key_;
@@ -17,40 +25,30 @@ export class DirectiveHandler implements IDirectiveHandler{
         return this.handler_(region, element, directive);
     }
 
-    public static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (target: object, prop: string | number | symbol, value: any) => boolean, target?: any){
-        let hasTarget = !! target;
-        let handler = {
-            get(target: object, prop: string | number | symbol): any{
-                if (typeof prop === 'symbol' || (typeof prop === 'string' && prop === 'prototype')){
-                    return Reflect.get(target, prop);
-                }
-
-                return getter(prop.toString());
-            },
-            set(target: object, prop: string | number | symbol, value: any){
-                if (hasTarget){
-                    return (setter ? setter(target, prop, value) : Reflect.set(target, prop, value));    
-                }
-
-                return (setter && setter(target, prop, value));
-            },
-            deleteProperty(target: object, prop: string | number | symbol){
-                return (hasTarget ? Reflect.deleteProperty(target, prop) : false);
-            },
-            has(target: object, prop: string | number | symbol){
-                if (Reflect.has(target, prop)){
-                    return true;
-                }
-
-                if (!contains){
-                    return false;
-                }
-
-                return ((typeof contains === 'function') ? contains(prop.toString()) : contains.includes(prop.toString()));
+    public Expunge(element: HTMLElement): void{
+        Object.keys(this.dataStorage_).forEach((key) => {
+            if (this.dataStorage_[key].element === element){
+                delete this.dataStorage_[key];
             }
+        });
+    }
+
+    protected AddStorage_(data: any, element?: HTMLElement): string{
+        let key = `${this.key_}.store.${this.dataStorageCounter_++}`;
+        this.dataStorage_[key] = {
+            data: data,
+            element: element,
         };
 
-        return new window.Proxy((target || {}), handler);
+        return key;
+    }
+
+    protected RemoveStorage_(key: string){
+        delete this.dataStorage_[key];
+    }
+
+    public static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (target: object, prop: string | number | symbol, value: any) => boolean, target?: any){
+        return Region.CreateProxy(getter, contains, setter, target);
     }
 
     public static Evaluate(region: IRegion, element: HTMLElement, expression: string, useWindow = false, ...args: any): any{
@@ -122,31 +120,7 @@ export class DirectiveHandler implements IDirectiveHandler{
     }
 
     public static ToString(value: any): string{
-        if (typeof value === 'string'){
-            return value;
-        }
-
-        if (value === null || value === undefined){
-            return '';
-        }
-
-        if (value === true){
-            return 'true';
-        }
-
-        if (value === false){
-            return 'false';
-        }
-
-        if (typeof value === 'object' && '__InlineJS_Target__' in value){
-            return DirectiveHandler.ToString(value['__InlineJS_Target__']);
-        }
-
-        if (Region.IsObject(value) || Array.isArray(value)){
-            return JSON.stringify(value);
-        }
-
-        return value.toString();
+        return Region.ToString(value);
     }
 
     public static GetChildElementIndex(element: HTMLElement){
@@ -204,5 +178,10 @@ export class DirectiveHandler implements IDirectiveHandler{
         else{//Append
             parent.appendChild(element);
         }
+    }
+
+    public static IsEventRequest(key: string){
+        const requestList = ['bind', 'event', 'on'];
+        return requestList.includes(key);
     }
 }

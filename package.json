@@ -2,10 +2,17 @@
   "name": "inlinejs",
   "version": "1.0.0",
   "description": "InlineJS built with modules",
-  "main": "index.js",
+  "main": "./lib/common/index.js",
+  "module": "./lib/esm/index.js",
+  "files": [
+    "lib/"
+  ],
   "scripts": {
-    "test": "mocha -r ts-node/register -r jsdom-global/register src/**/*.spec.ts",
-    "dbg-test": "mocha --inspect-brk -r ts-node/register -r jsdom-global/register src/**/*.spec.ts"
+    "test": "mocha -r jsdom-global/register lib/**/*.spec.js",
+    "ts-test": "mocha -r ts-node/register -r jsdom-global/register src/**/*.spec.ts",
+    "dbg-test": "mocha --inspect-brk -r ts-node/register -r jsdom-global/register src/**/*.spec.ts",
+    "tsc": "tsc -p ./tsconfig.json && tsc -p ./tsconfig.esm.json",
+    "prepublishOnly": "npm run tsc"
   },
   "repository": {
     "type": "git",
@@ -26,9 +33,13 @@
     "jsdom": "^16.6.0",
     "jsdom-global": "^3.0.2",
     "mocha": "^9.0.0",
-    "ts-node": "^10.0.0"
+    "node-static": "^0.7.11",
+    "ts-loader": "^9.2.3",
+    "ts-node": "^10.0.0",
+    "webpack": "^5.41.0"
   },
   "dependencies": {
-    "randomstring": "^1.2.1"
+    "randomstring": "^1.2.1",
+    "webpack-cli": "^4.7.2"
   }
 }
