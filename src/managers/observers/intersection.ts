@@ -14,7 +14,7 @@ export class IntersectionObserverManager implements IIntersectionObserverManager
     }
 
     public Remove(observer: IIntersectionObserver): void{
-        this.list_.splice(this.list_.findIndex(item => (item === observer)), 1);
+        this.RemoveByKey(observer.GetKey());
     }
 
     public RemoveByKey(key: string, stop = true): void{

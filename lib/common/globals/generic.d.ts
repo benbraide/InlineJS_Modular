@@ -1,4 +1,4 @@
-import { IGlobalHandler, IGlobalManager } from '../typedefs';
+import { IGlobalHandler, IGlobalManager, IRegion } from '../typedefs';
 import { Region } from '../region';
 export declare class GlobalHandler implements IGlobalHandler {
     protected key_: string;
@@ -16,3 +16,15 @@ export declare class GlobalHandler implements IGlobalHandler {
     CanHandle(regionId: string): boolean;
     Handle(regionId: string, contextElement: HTMLElement): any;
 }
+interface ProxyInfo {
+    element: HTMLElement;
+    proxy: any;
+}
+export declare class ProxiedGlobalHandler extends GlobalHandler {
+    protected proxies_: ProxyInfo[];
+    constructor(key: string, value: any, canHandle?: (regionId?: string) => boolean, beforeAdd?: (manager?: IGlobalManager) => boolean, afterAdd?: (manager?: IGlobalManager) => void, afterRemove?: (manager?: IGlobalManager) => void);
+    protected AddProxy(element: HTMLElement, proxy: any, region?: IRegion): any;
+    protected RemoveProxy(element: HTMLElement): void;
+    protected GetProxy(element: HTMLElement): any;
+}
+export {};

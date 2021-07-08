@@ -1,20 +1,7 @@
-import { GlobalHandler } from './generic'
+import { ProxiedGlobalHandler } from './generic'
 import { Region } from '../region'
 
-export class GeneralKeyboardGlobalHandler extends GlobalHandler{
-    public constructor(){
-        super('$keyboard', (regionId: string) => {
-            return (target: HTMLElement, searchOnly = false, bubble = true) => {
-                if (searchOnly){
-                    return Region.Get(regionId)?.GetLocal(target, '$keyboard', bubble);
-                }
-                return (target ? Region.GetGlobalManager().GetHandler(regionId, '$keyboard')?.Handle(regionId, target) : null);
-            };
-        });
-    }
-}
-
-export class KeyboardGlobalHandler extends GlobalHandler{
+export class KeyboardGlobalHandler extends ProxiedGlobalHandler{
     public constructor(){
         super('keyboard', (regionId: string, contextElement: HTMLElement) => {
             if (!contextElement){
@@ -27,7 +14,7 @@ export class KeyboardGlobalHandler extends GlobalHandler{
             }
 
             let callGlobalkeyboard = (target: HTMLElement) => {
-                return (target ? (Region.GetGlobalManager().Handle(regionId, null, '$$keyboard') as (target: HTMLElement) => any)(target) : null);
+                return (target ? (Region.GetGlobalManager().Handle(regionId, null, `\$\$${this.key_}`) as (target: HTMLElement) => any)(target) : null);
             };
 
             let getAncestor = (index: number) => {
@@ -35,9 +22,9 @@ export class KeyboardGlobalHandler extends GlobalHandler{
                 return (myRegion ? myRegion.GetElementAncestor(contextElement, index) : null);
             };
             
-            let elementScope = region.AddElement(contextElement, true);
-            if (elementScope && '$keyboard' in elementScope.locals){
-                return elementScope.locals['$keyboard'];
+            let proxy = this.GetProxy(contextElement);
+            if (proxy){//Already created
+                return proxy;
             }
             
             let listening = { down: false, up: false }, current: Record<string, string> = { down: '', up: '' };
@@ -61,7 +48,7 @@ export class KeyboardGlobalHandler extends GlobalHandler{
                 }
             };
 
-            let proxy = Region.CreateProxy((prop) =>{
+            proxy = Region.CreateProxy((prop) =>{
                 if (prop in listening){
                     Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
                     if (!listening[prop]){
@@ -105,13 +92,7 @@ export class KeyboardGlobalHandler extends GlobalHandler{
                 return true;
             });
 
-            elementScope.locals['$keyboard'] = proxy;
-
-            return proxy;
-        }, null, null, (manager) => {
-            manager.AddHandler(new GeneralKeyboardGlobalHandler());
-        }, (manager) => {
-            manager.RemoveHandlerByKey('$keyboard');
+            return this.AddProxy(contextElement, proxy, region);
         });
     }
 }

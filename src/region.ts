@@ -8,6 +8,7 @@ import {
     IEvaluator,
     IProcessor,
     IConfig,
+    IDatabase,
     IDirectiveManager,
     IGlobalManager,
     IOutsideEventManager,
@@ -19,6 +20,7 @@ import {
     AnimationBindInfo,
     IParsedAnimation,
     IAnimationParser,
+    IResizeObserver,
 } from './typedefs'
 
 import { Stack } from './stack'
@@ -26,11 +28,13 @@ import { State } from './state'
 import { Changes } from './changes'
 import { Evaluator } from './evaluator'
 import { Config } from './config'
+import { Database } from './utilities/database'
 import { Processor } from './processor'
 import { DirectiveManager } from './managers/directive'
 import { GlobalManager } from './managers/global'
 import { OutsideEventManager } from './managers/outside_event'
 import { IntersectionObserverManager } from './managers/observers/intersection'
+import { ResizeObserver } from './observers/resize'
 import { RootProxy, NoResult } from './proxy'
 
 class NoAnimation implements IParsedAnimation{
@@ -58,6 +62,7 @@ class NoAnimation implements IParsedAnimation{
 export class Region implements IRegion{
     private static components_: Record<string, string> = {};
     private static postProcessCallbacks_ = new Stack<Array<() => void>>();
+    private static forcedPostProcessCallbacks_ = new Array<() => void>();
 
     private static lastId_ = 0;
     private static lastSubId_: number = null;
@@ -68,6 +73,8 @@ export class Region implements IRegion{
 
     private static evaluator_ = new Evaluator(Region.Get, Region.GetElementKeyName(), Region.scopeRegionIds_);
     private static config_ = new Config();
+    private static database_: IDatabase = null;
+    
     private static directiveManager_ = new DirectiveManager();
     private static globalManager_ = new GlobalManager(Region.Get, Region.Infer);
     private static outsideEventManager_ = new OutsideEventManager();
@@ -90,6 +97,7 @@ export class Region implements IRegion{
     private refs_: Record<string, HTMLElement> = {};
     private observer_: MutationObserver = null;
     private intersectionObserverManager_: IIntersectionObserverManager = null;
+    private resizeObserver_: IResizeObserver = null;
     private localHandlers_ = new Array<ILocalHandler>();
     private nextTickCallbacks_ = new Array<() => void>();
     private tempCallbacks_: Record<string, () => any> = {};
@@ -292,6 +300,10 @@ export class Region implements IRegion{
         return Region.config_;
     }
 
+    public GetDatabase(createIfNotExists?: boolean): IDatabase{
+        return Region.GetDatabase(createIfNotExists);
+    }
+
     public GetDirectiveManager(): IDirectiveManager{
         return Region.directiveManager_;
     }
@@ -306,6 +318,10 @@ export class Region implements IRegion{
 
     public GetIntersectionObserverManager(): IIntersectionObserverManager{
         return (this.intersectionObserverManager_ = (this.intersectionObserverManager_ || new IntersectionObserverManager(this.id_)));
+    }
+
+    public GetResizeObserver(): IResizeObserver{
+        return (this.resizeObserver_ = (this.resizeObserver_ || new ResizeObserver(this.id_)));
     }
 
     public SetAlertHandler(handler: IAlertHandler): IAlertHandler{
@@ -419,6 +435,10 @@ export class Region implements IRegion{
                 Region.directiveManager_.Expunge(scope.element);
                 if (this.intersectionObserverManager_){
                     this.intersectionObserverManager_.RemoveAll(scope.element);
+                }
+
+                if (this.resizeObserver_){
+                    this.resizeObserver_.Unbind(scope.element);
                 }
                 
                 if (!scope.preserveSubscriptions){
@@ -589,9 +609,10 @@ export class Region implements IRegion{
     }
 
     public ForwardEventBinding(element: HTMLElement, directiveValue: string, directiveOptions: Array<string>, event: string){
+        let name = Region.GetConfig().GetDirectiveName('on');
         return Region.directiveManager_.Handle(this, element, {
-            original: 'x-on',
-            expanded: 'x-on',
+            original: name,
+            expanded: name,
             parts: ['on'],
             raw: 'on',
             key: 'on',
@@ -711,6 +732,17 @@ export class Region implements IRegion{
         return Region.config_;
     }
 
+    public static GetDatabase(createIfNotExists = true): IDatabase{
+        if (!createIfNotExists || Region.database_){
+            return Region.database_;
+        }
+
+        let db = new Database(Region.config_.GetAppName() || 'defaultdb');
+        db.Open();
+        
+        return (Region.database_ = db);
+    }
+
     public static GetDirectiveManager(): IDirectiveManager{
         return Region.directiveManager_;
     }
@@ -788,17 +820,21 @@ export class Region implements IRegion{
     }
 
     public static PushPostProcessCallback(){
-        Region.postProcessCallbacks_.Push(new Array<() => void>());
+        Region.postProcessCallbacks_.Push(Region.forcedPostProcessCallbacks_);
+        Region.forcedPostProcessCallbacks_ = new Array<() => void>();
     }
 
     public static PopPostProcessCallback(){
         Region.postProcessCallbacks_.Pop();
     }
 
-    public static AddPostProcessCallback(callback: () => void){
+    public static AddPostProcessCallback(callback: () => void, forced = false){
         let list = Region.postProcessCallbacks_.Peek();
         if (list){
             list.push(callback);
+        }
+        else if (forced){
+            Region.forcedPostProcessCallbacks_.push(callback);
         }
     }
 

@@ -1,7 +1,4 @@
-import { GlobalHandler } from './generic';
-export declare class GeneralKeyboardGlobalHandler extends GlobalHandler {
-    constructor();
-}
-export declare class KeyboardGlobalHandler extends GlobalHandler {
+import { ProxiedGlobalHandler } from './generic';
+export declare class KeyboardGlobalHandler extends ProxiedGlobalHandler {
     constructor();
 }

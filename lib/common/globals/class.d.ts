@@ -1,4 +1,4 @@
 import { ProxiedGlobalHandler } from './generic';
-export declare class MouseGlobalHandler extends ProxiedGlobalHandler {
+export declare class ClassGlobalHandler extends ProxiedGlobalHandler {
     constructor();
 }

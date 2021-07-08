@@ -25,7 +25,15 @@ export class Config implements IConfig{
         'nomodule', 'novalidate', 'open', 'playsinline', 'readonly', 'required', 'reversed', 'selected',
     );
 
-    public constructor (){}
+    public constructor (private appName_ = ''){}
+
+    public SetAppName(name: string): void{
+        this.appName_ = name;
+    }
+
+    public GetAppName(): string{
+        return this.appName_;
+    }
     
     public SetDirectivePrefix(value: string){
         this.directivePrefix_ = value;

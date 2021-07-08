@@ -6,13 +6,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InlineJS</title>
     <style>
+        body.overlay{
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        body.pad{
+            padding-right: 1rem;
+        }
+        
         [x-cloak="hide"]{
             display: none;
         }
     </style>
 </head>
 <body>
-    <h1>InlineJS</h1>
+    <template x-bind="$page.title = `${$router.title} | InlineJS`" x-data></template>
+    <h1 x-init="$router.register({path: '/', title: 'Home'})" x-text="$page.title" x-on:click="$alert.confirm('Hello World!', () => {})" x-data></h1>
+    <div x-data x-overlay:click="$overlay.visible = false">
+        <button x-on:click="$overlay.visible = true" x-bind="$overlay.overflow ? $$class($body).add('pad') : $$class($body).remove('pad')">Show Overlay</button>
+    </div>
     <p x-typewriter.delete.cursor.lazy="['My very first typewriting', 'Another typing', ['Final ', {text: 'subsequent', tagName: 'p', attributes: {style: 'font-weight: bold'}}, ' tries']]" x-data></p>
     <div x-component="first" x-data="{email: 'user.yahoo@yahoo.com', name: 'John Doe', state: true, getName(){ return this.name }}">
         <h2 x-style:color="color" x-on:click="color = 'red'">First Component</h2>

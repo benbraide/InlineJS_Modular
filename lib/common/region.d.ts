@@ -1,8 +1,9 @@
-import { IRegion, IElementScope, IState, IProxy, IChanges, IChangeRefInfo, IEvaluator, IProcessor, IConfig, IDirectiveManager, IGlobalManager, IOutsideEventManager, IIntersectionObserverManager, IAlertHandler, IRootElement, IParsedAnimation, IAnimationParser } from './typedefs';
+import { IRegion, IElementScope, IState, IProxy, IChanges, IChangeRefInfo, IEvaluator, IProcessor, IConfig, IDatabase, IDirectiveManager, IGlobalManager, IOutsideEventManager, IIntersectionObserverManager, IAlertHandler, IRootElement, IParsedAnimation, IAnimationParser, IResizeObserver } from './typedefs';
 export declare class Region implements IRegion {
     private rootElement_;
     private static components_;
     private static postProcessCallbacks_;
+    private static forcedPostProcessCallbacks_;
     private static lastId_;
     private static lastSubId_;
     private static entries_;
@@ -10,6 +11,7 @@ export declare class Region implements IRegion {
     private static hooks_;
     private static evaluator_;
     private static config_;
+    private static database_;
     private static directiveManager_;
     private static globalManager_;
     private static outsideEventManager_;
@@ -30,6 +32,7 @@ export declare class Region implements IRegion {
     private refs_;
     private observer_;
     private intersectionObserverManager_;
+    private resizeObserver_;
     private localHandlers_;
     private nextTickCallbacks_;
     private tempCallbacks_;
@@ -59,10 +62,12 @@ export declare class Region implements IRegion {
     GetEvaluator(): IEvaluator;
     GetProcessor(): IProcessor;
     GetConfig(): IConfig;
+    GetDatabase(createIfNotExists?: boolean): IDatabase;
     GetDirectiveManager(): IDirectiveManager;
     GetGlobalManager(): IGlobalManager;
     GetOutsideEventManager(): IOutsideEventManager;
     GetIntersectionObserverManager(): IIntersectionObserverManager;
+    GetResizeObserver(): IResizeObserver;
     SetAlertHandler(handler: IAlertHandler): IAlertHandler;
     GetAlertHandler(): IAlertHandler;
     Alert(data: any): boolean | void;
@@ -110,6 +115,7 @@ export declare class Region implements IRegion {
     static GetEvaluator(): IEvaluator;
     static GetProcessor(): IProcessor;
     static GetConfig(): IConfig;
+    static GetDatabase(createIfNotExists?: boolean): IDatabase;
     static GetDirectiveManager(): IDirectiveManager;
     static GetGlobalManager(): IGlobalManager;
     static SetAlertHandler(handler: IAlertHandler): IAlertHandler;
@@ -126,7 +132,7 @@ export declare class Region implements IRegion {
     static Find(key: string, getNativeProxy: true): any;
     static PushPostProcessCallback(): void;
     static PopPostProcessCallback(): void;
-    static AddPostProcessCallback(callback: () => void): void;
+    static AddPostProcessCallback(callback: () => void, forced?: boolean): void;
     static TraversePostProcessCallbacks(handler: (callback: () => void) => void): void;
     static ExecutePostProcessCallbacks(pop?: boolean): void;
     static IsObject(target: any): boolean;

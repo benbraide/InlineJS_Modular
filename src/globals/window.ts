@@ -12,6 +12,12 @@ export class DocumentGlobalHandler extends GlobalHandler{
     }
 }
 
+export class BodyGlobalHandler extends GlobalHandler{
+    public constructor(){
+        super('body', document.body);
+    }
+}
+
 export class ConsoleGlobalHandler extends GlobalHandler{
     public constructor(){
         super('console', console);

@@ -196,6 +196,8 @@ export interface IEvaluator{
 }
 
 export interface IConfig{
+    SetAppName(name: string): void;
+    GetAppName(): string;
     SetDirectivePrefix(value: string): void;
     GetDirectivePrefix(): string;
     GetDirectiveRegex(): RegExp;
@@ -263,11 +265,19 @@ export interface IIntersectionObserverManager{
     RemoveAll(target: HTMLElement, stop?: boolean): void;
 }
 
+export type ResizeObserverHandlerType = (entry?: ResizeObserverEntry, key?: string, observer?: IResizeObserver) => void;
+
+export interface IResizeObserver{
+    Bind(element: HTMLElement, handler: ResizeObserverHandlerType): string;
+    Unbind(target: string | HTMLElement): void;
+    GetObserver(): globalThis.ResizeObserver;
+}
+
 export interface IAlertHandler{
-    Alert(data: any): boolean | void;
-    Confirm(data: any, confirmed: any, canceled?: any): void;
+    Alert(data: any): void;
+    Confirm(data: any, confirmed: () => void, canceled?: () => void): void;
     Prompt(data: any, callback: (response: any) => void): void;
-    ServerError(err: any): boolean | void;
+    ServerError(err: any): void;
 }
 
 export interface IAnimationEase{
@@ -302,6 +312,11 @@ export interface IAnimationParser{
     Parse(options: Array<string>, target?: HTMLElement | ((fraction: number) => void)): IParsedAnimation;
 }
 
+export interface IDatabase{
+    Read(key: string, successHandler?: (data: any) => void, errorHandler?: () => void): Promise<any>;
+    Write(key: string, data: any, successHandler?: () => void, errorHandler?: () => void): Promise<void>;
+}
+
 export interface IRegion{
     SetOptimizedBindsState(value: boolean): void;
     IsOptimizedBinds(): boolean;
@@ -324,10 +339,12 @@ export interface IRegion{
     GetEvaluator(): IEvaluator;
     GetProcessor(): IProcessor;
     GetConfig(): IConfig;
+    GetDatabase(createIfNotExists?: boolean): IDatabase;
     GetDirectiveManager(): IDirectiveManager;
     GetGlobalManager(): IGlobalManager;
     GetOutsideEventManager(): IOutsideEventManager;
     GetIntersectionObserverManager(): IIntersectionObserverManager;
+    GetResizeObserver(): IResizeObserver;
     SetAlertHandler(handler: IAlertHandler): IAlertHandler;
     GetAlertHandler(): IAlertHandler;
     Alert(data: any): boolean | void;
@@ -399,4 +416,33 @@ export interface Size{
 export interface NamedDirection{
     x: 'up' | 'right' | 'down' | 'left' | 'none';
     y: 'up' | 'right' | 'down' | 'left' | 'none';
+}
+
+export interface PathInfo{
+    base: string;
+    query: string;
+}
+
+export interface ExtendedPathInfo{
+    base: string;
+    query: string;
+    formattedQuery: Record<string, Array<string> | string>;
+}
+
+export type OnRouterLoadHandlerType = (path?: ExtendedPathInfo, reloaded?: boolean) => void;
+
+export interface IBackPath{};
+
+export interface IRouterGlobalHandler{
+    Goto(target: string | PathInfo | IBackPath, shouldReload?: boolean | (() => boolean)): void;
+    Reload(): void;
+    BindOnLoad(handler: OnRouterLoadHandlerType): void;
+    UnbindOnLoad(handler: OnRouterLoadHandlerType): void;
+    GetCurrentUrl(): string;
+    GetCurrentQuery(key?: string): Record<string, Array<string> | string> | Array<string> | string;
+    GetActivePage(): PathInfo;
+}
+
+export interface IPageGlobalHandler{
+    SetNextPageData(data: Record<string, any>): void;
 }

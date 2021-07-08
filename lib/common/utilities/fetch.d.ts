@@ -7,7 +7,7 @@ export declare enum FetchMode {
 export interface FetchHandlers {
     onLoad?: (data?: any) => void;
     onError?: (err: any) => void;
-    onProgress?: (e: ProgressEvent<XMLHttpRequestEventTarget>) => void;
+    onProgress?: (value: number) => void;
     onEmptyMount?: () => void;
     onPropGet?: (prop: string) => void | any;
     onPropSet?: (prop: string, value?: any) => void;

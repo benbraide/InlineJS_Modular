@@ -1,4 +1,4 @@
-import { IDirective, DirectiveHandlerReturn, IRegion } from '../typedefs'
+import { IDirective, DirectiveHandlerReturn, IRegion, IRouterGlobalHandler, OnRouterLoadHandlerType, IBackPath } from '../typedefs'
 import { ExtendedDirectiveHandler } from '../directives/extended/generic'
 import { Fetch } from '../utilities/fetch'
 import { GlobalHandler } from './generic'
@@ -27,13 +27,11 @@ export interface PathInfo{
     query: string;
 }
 
-export class BackPath{}
+export class BackPath implements IBackPath{}
 
 export interface IMiddleware{
     Handle(path?: PathInfo): void | boolean;
 }
-
-export type OnLoadHandlerType = (path?: PathInfo, reloaded?: boolean) => void;
 
 export class RouterDirectiveHandler extends ExtendedDirectiveHandler{
     public constructor(router: RouterGlobalHandler){
@@ -338,7 +336,7 @@ export class MountDirectiveHandler extends ExtendedDirectiveHandler{
     }
 }
 
-export class RouterGlobalHandler extends GlobalHandler{
+export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalHandler{
     private scopeId_: string;
     private proxy_ = null;
     
@@ -347,15 +345,16 @@ export class RouterGlobalHandler extends GlobalHandler{
 
     private origin_: string;
     private url_: string;
-    private onLoadHandlers_ = new Array<OnLoadHandlerType>();
+    private onLoadHandlers_ = new Array<OnRouterLoadHandlerType>();
 
     private lastPageId_ = 0;
     private pages_ = new Array<PageInfo>();
 
     private activePage_: PageInfo = null;
-    private currentUrl_:string = null;
+    private currentUrl_: string = null;
+    private currentQuery_: Record<string, Array<string> | string> = null;
     
-    public constructor(private middlewares_ = new Array<IMiddleware>(), mountElementType = ''){
+    public constructor(private middlewares_ = new Array<IMiddleware>(), private ajaxPrefix_ = 'ajax', mountElementType = ''){
         super('router', () => this.proxy_, null, null, () => {
             this.mountInfo_ = {
                 scopeId: this.scopeId_,
@@ -371,12 +370,17 @@ export class RouterGlobalHandler extends GlobalHandler{
             window.addEventListener('popstate', this.onEvent_);
             Region.AddPostProcessCallback(() => {
                 this.Load_(this.BuildPath(this.url_));
-            });
+            }, true);
 
             this.proxy_ = Region.CreateProxy((prop) => {
                 if (prop === 'page'){
                     GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.${prop}`);
                     return (this.activePage_ ? {...this.activePage_} : null);
+                }
+
+                if (prop === 'title'){
+                    GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.page`);
+                    return ((this.activePage_ ? this.activePage_.title : null) || 'Untitled');
                 }
 
                 if (prop === 'url'){
@@ -387,8 +391,18 @@ export class RouterGlobalHandler extends GlobalHandler{
                 if (prop === 'mount'){
                     return this.mountInfo_.proxy;
                 }
-            }, ['page', 'url', 'mount']);
+
+                if (prop === 'register'){
+                    return (page: PageOptions) => this.Register(page);
+                }
+            }, ['page', 'url', 'mount', 'register'], (target, prop, value) => {
+                if (typeof prop === 'string' && prop === 'url'){
+                    this.Goto(value);
+                    return true;
+                }
+            });
         }, () => {
+            this.proxy_ = null;
             window.removeEventListener('popstate', this.onEvent_);
             
             Region.GetDirectiveManager().RemoveHandlerByKey(`${this.key_}.mount`);
@@ -415,6 +429,7 @@ export class RouterGlobalHandler extends GlobalHandler{
         };
 
         this.url_ = window.location.href;
+        this.ajaxPrefix_ = this.ProcessUrl(this.ajaxPrefix_);
     }
 
     public Register(page: PageOptions): number{
@@ -454,30 +469,47 @@ export class RouterGlobalHandler extends GlobalHandler{
         }, shouldReload);
     }
 
-    public BindOnLoad(handler: OnLoadHandlerType){
+    public Reload(){
+        this.Goto(this.currentUrl_, true);
+    }
+
+    public BindOnLoad(handler: OnRouterLoadHandlerType){
         this.onLoadHandlers_.push(handler);
     }
 
-    public UnbindOnLoad(handler: OnLoadHandlerType){
+    public UnbindOnLoad(handler: OnRouterLoadHandlerType){
         this.onLoadHandlers_.splice(this.onLoadHandlers_.indexOf(handler), 1);
     }
 
-    public GetActivePage(): PathInfo{
-        return null;
+    public GetCurrentUrl(): string{
+        return this.currentUrl_;
     }
 
-    public ProcessUrl(url: string){
-        url = url.trim();
+    public GetCurrentQuery(key?: string): Record<string, Array<string> | string> | Array<string> | string{
+        return (key ? ((key in this.currentQuery_) ? this.currentQuery_[key] : null) : this.currentQuery_);
+    }
+
+    public GetActivePage(): PathInfo{
+        return this.BuildPath(this.currentUrl_);
+    }
+
+    public ProcessUrl(url: string, includeAjaxPrefix = false){
+        url = (url ? url.trim() : '');
         if (!url){
             return '';
         }
 
+        url = url.replace(/\/+$/, '');//Truncate '/'
         if (url === this.origin_){//Root
-            return '/';
+            return (includeAjaxPrefix ? (this.ajaxPrefix_ || '/') : '/');
         }
         
         if (url.startsWith(`${this.origin_}/`)){//Skip origin
             url = url.substr(this.origin_.length);
+        }
+
+        if (includeAjaxPrefix && this.ajaxPrefix_){
+            url = `${this.ajaxPrefix_}/${url}`;
         }
         
         return (url.startsWith('/') ? url : `/${url}`);
@@ -492,13 +524,13 @@ export class RouterGlobalHandler extends GlobalHandler{
         return ((!query || query.startsWith('?')) ? (query || '') : `?${query}`);
     }
 
-    public BuildUrl(path: PathInfo, absolute = true, process = true){
-        let base = (process ? this.ProcessUrl(path.base) : path.base), query = (process ? this.ProcessQuery(path.query) : path.query), url: string;
+    public BuildUrl(path: PathInfo, absolute = true, process = true, includeAjaxPrefix = false){
+        let base = (process ? this.ProcessUrl(path.base, includeAjaxPrefix) : path.base), query = (process ? this.ProcessQuery(path.query) : path.query), url: string;
         if (query){
-            url = base;
+            url = (base.includes('?') ? `${base}&${query}` : `${base}?${query}`);
         }
         else{
-            url = (base.includes('?') ? `${base}&${query}` : `${base}?${query}`);
+            url = base;
         }
 
         return (absolute ? `${this.origin_}${url}` : url);
@@ -512,6 +544,42 @@ export class RouterGlobalHandler extends GlobalHandler{
             base: ((queryIndex == -1) ? url : url.substr(0, queryIndex)),
             query: ((queryIndex == -1) ? '' : url.substr(queryIndex + 1)),
         };
+    }
+
+    public BuildQuery(query: string, shouldDecode = true): Record<string, Array<string> | string>{
+        query = query.trim();
+        if (!query){
+            return {};
+        }
+
+        let formatted: Record<string, Array<string> | string> = {}, decode = (value: string) => {
+            return (shouldDecode ? decodeURIComponent(value.replace(/\+/g, ' ')) : value);
+        };
+
+        query.split('&').map(part => part.trim()).forEach((part) => {
+            if (part.startsWith('=')){
+                return;//Malformed
+            }
+            
+            let pair = part.split('=');
+            if (pair.length > 1 && pair[0].endsWith('[]')){//Array values
+                let key = decode(pair[0].substr(0, (pair[0].length - 2)));
+                if (key in formatted && Array.isArray(formatted[key])){//Append
+                    (formatted[key] as Array<string>).push(decode(pair[1]));
+                }
+                else{//Assign
+                    formatted[key] = [decode(pair[1])];
+                }
+            }
+            else if (pair.length > 1){//Single value
+                formatted[decode(pair[0])] = decode(pair[1]);
+            }
+            else if (pair.length == 1){//No value
+                formatted[decode(pair[0])] = null;
+            }
+        });
+
+        return formatted;
     }
 
     private Load_(path: PathInfo, callback?: (url: string, title: string) => void, shouldReload?: boolean | (() => boolean)){
@@ -554,27 +622,37 @@ export class RouterGlobalHandler extends GlobalHandler{
                 return;//Reload rejected
             }
         }
-        else{
+        else{//New url
+            GlobalHandler.region_.GetChanges().AddComposed('url', this.scopeId_);
             this.currentUrl_ = url;
+            this.currentQuery_ = this.BuildQuery(this.BuildPath(url).query);
         }
 
-        if (page !== this.activePage_){
+        let isNewPage = (page !== this.activePage_);
+        if (isNewPage){
+            GlobalHandler.region_.GetChanges().AddComposed('page', this.scopeId_);
             this.activePage_ = page;
         }
 
         if (callback){
             callback(url, page.title);
         }
+        else if (isNewPage){
+            document.title = (page.title || 'Untitled');
+        }
 
         if (this.mountInfo_.fetch){
-            this.mountInfo_.fetch(url);
+            this.mountInfo_.fetch((this.ajaxPrefix_ && this.ajaxPrefix_) ? this.BuildUrl(processedPath, true, true, true) : url);
         }
 
         window.dispatchEvent(new CustomEvent(`${this.key_}.load`));
-        if (page !== this.activePage_){
+        if (isNewPage){
             this.onLoadHandlers_.forEach((handler) => {
                 try{
-                    handler({...processedPath});
+                    handler({
+                        ...processedPath,
+                        formattedQuery: this.currentQuery_,
+                    });
                 }
                 catch{}
             });

@@ -1,4 +1,4 @@
-import { IGlobalHandler, IGlobalManager } from '../typedefs'
+import { IGlobalHandler, IGlobalManager, IRegion } from '../typedefs'
 import { Region } from '../region'
 
 export class GlobalHandler implements IGlobalHandler{
@@ -33,5 +33,46 @@ export class GlobalHandler implements IGlobalHandler{
 
     public Handle(regionId: string, contextElement: HTMLElement): any{
         return ((typeof this.value_ === 'function') ? (this.value_ as (regionId?: string, contextElement?: HTMLElement) => any)(regionId, contextElement) : this.value_);
+    }
+}
+
+interface ProxyInfo{
+    element: HTMLElement;
+    proxy: any;
+}
+
+export class ProxiedGlobalHandler extends GlobalHandler{
+    protected proxies_ = new Array<ProxyInfo>();
+    
+    public constructor(key: string, value: any, canHandle?: (regionId?: string) => boolean, beforeAdd?: (manager?: IGlobalManager) => boolean,
+        afterAdd?: (manager?: IGlobalManager) => void, afterRemove?: (manager?: IGlobalManager) => void){
+        super(key, value, canHandle, beforeAdd, afterAdd, afterRemove);
+    }
+
+    protected AddProxy(element: HTMLElement, proxy: any, region?: IRegion){
+        this.proxies_.push({
+            element: element,
+            proxy: proxy,
+        });
+
+        if (region){
+            let elementScope = region.GetElementScope(element);
+            if (elementScope){
+                elementScope.uninitCallbacks.push(() => {
+                    this.RemoveProxy(element);
+                });
+            }
+        }
+
+        return proxy;
+    }
+
+    protected RemoveProxy(element: HTMLElement){
+        this.proxies_.splice(this.proxies_.findIndex(proxy => (proxy.element === element)), 1);
+    }
+
+    protected GetProxy(element: HTMLElement){
+        let index = this.proxies_.findIndex(proxy => (proxy.element === element));
+        return ((index == -1) ? null : this.proxies_[index].proxy);
     }
 }

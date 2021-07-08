@@ -1,7 +1,7 @@
-import { GlobalHandler } from './generic'
+import { ProxiedGlobalHandler } from './generic'
 import { Region } from '../region'
 
-export class MouseGlobalHandler extends GlobalHandler{
+export class MouseGlobalHandler extends ProxiedGlobalHandler{
     public constructor(){
         super('mouse', (regionId: string, contextElement: HTMLElement) => {
             if (!contextElement){
@@ -14,7 +14,7 @@ export class MouseGlobalHandler extends GlobalHandler{
             }
 
             let callGlobalMouse = (target: HTMLElement) => {
-                return (target ? (Region.GetGlobalManager().Handle(regionId, null, '$$mouse') as (target: HTMLElement) => any)(target) : null);
+                return (target ? (Region.GetGlobalManager().Handle(regionId, null, `\$\$${this.key_}`) as (target: HTMLElement) => any)(target) : null);
             };
 
             let getAncestor = (index: number) => {
@@ -22,9 +22,9 @@ export class MouseGlobalHandler extends GlobalHandler{
                 return (myRegion ? myRegion.GetElementAncestor(contextElement, index) : null);
             };
             
-            let elementScope = region.AddElement(contextElement, true);
-            if (elementScope && '$mouse' in elementScope.locals){
-                return elementScope.locals['$mouse'];
+            let proxy = this.GetProxy(contextElement);
+            if (proxy){//Already created
+                return proxy;
             }
             
             let listeningInside = false;
@@ -48,7 +48,7 @@ export class MouseGlobalHandler extends GlobalHandler{
                 }
             };
 
-            let proxy = Region.CreateProxy((prop) =>{
+            proxy = Region.CreateProxy((prop) =>{
                 if (prop === 'inside'){
                     Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
                     if (!listeningInside){
@@ -101,9 +101,7 @@ export class MouseGlobalHandler extends GlobalHandler{
                 return true;
             });
 
-            elementScope.locals['$mouse'] = proxy;
-
-            return proxy;
+            return this.AddProxy(contextElement, proxy, region);
         });
     }
 }

@@ -162,9 +162,9 @@ export class ScreenGlobalHandler extends GlobalHandler{
             
             Region.GetDirectiveManager().AddHandler(new ScreenDirectiveHandler(this));
         }, () => {
+            Region.GetDirectiveManager().RemoveHandlerByKey(this.key_);
             window.removeEventListener('scroll', this.scrollEventHandler_);
             window.removeEventListener('resize', this.resizeEventHandler_);
-            Region.GetDirectiveManager().RemoveHandlerByKey(this.key_);
         });
 
         this.scopeId_ = GlobalHandler.region_.GenerateDirectiveScopeId(null, `_${this.key_}`);
@@ -212,7 +212,16 @@ export class ScreenGlobalHandler extends GlobalHandler{
             y: ((offset.y <= 0) ? 0 : ((position.y / offset.y) * 100)),
         };
 
-        let direction: NamedDirection, directionOffset: Point;
+        let direction: NamedDirection = {
+            x: 'none',
+            y: 'none',
+        };
+
+        let directionOffset: Point = {
+            x: 0,
+            y: 0,
+        };
+        
         if (percentage.x < this.properties_.scrollPercentage.x){
             direction.x = 'left';
             directionOffset.x = (this.properties_.scrollPercentage.x - percentage.x);

@@ -1,8 +1,16 @@
 import { IDirective, DirectiveHandlerReturn, IRegion } from '../../typedefs'
 import { IntersectionObserver } from '../../observers/intersection'
-import { Fetch } from '../../utilities/fetch'
+import { Fetch, FetchMode } from '../../utilities/fetch'
 import { Region } from '../../region'
 import { ExtendedDirectiveHandler } from './generic'
+
+export interface XHRState{
+    active: boolean;
+    loaded: boolean;
+    loads: number;
+    progress: number;
+    data: any;
+}
 
 export interface XHROptions{
     region: IRegion;
@@ -13,21 +21,23 @@ export interface XHROptions{
     publicProps?: Array<string>;
     lazy?: boolean;
     ancestor?: number;
+    fetchMode?: FetchMode;
     onLoad?: (region?: IRegion, data?: any) => void;
     onError?: (err: any) => void;
-    formatData?: (data: any) => any;
+    formatData?: (data: any, mode: FetchMode) => any;
+    setData?: (state: XHRState, value: any, mode: FetchMode, regionId?: string, scopeId?: string) => boolean | void;
 }
 
 export class XHRHelper{
     public static BindFetch(options: XHROptions){
         options.publicProps = (options.publicProps || ['url', 'mode']);
         
-        let regionId = options.region.GetId(), scopeId = options.region.GenerateDirectiveScopeId(null, `_${options.key}`), state = {
+        let regionId = options.region.GetId(), scopeId = options.region.GenerateDirectiveScopeId(null, `_${options.key}`), state: XHRState = {
             active: false,
             loaded: false,
             loads: 0,
             progress: 0,
-            data: (options.formatData ? options.formatData(null) : null),
+            data: (options.formatData ? options.formatData(null, options.fetchMode) : null),
         };
 
         let methods = {
@@ -59,15 +69,26 @@ export class XHRHelper{
                 setState('progress', 100);
 
                 if (options.formatData){
-                    data = options.formatData(data);
+                    data = options.formatData(data, options.fetchMode);
                 }
 
                 if (!options.element){
-                    setState('data', data);
+                    if (options.setData){
+                        let response = options.setData(state, data, options.fetchMode, regionId, scopeId);
+                        if (response === true){
+                            Region.Get(regionId).GetChanges().AddComposed('data', scopeId);
+                        }
+                        else if (response !== false){
+                            setState('data', data);
+                        }
+                    }
+                    else{
+                        setState('data', data);
+                    }
                 }
 
                 if (target){
-                    target.dispatchEvent(new CustomEvent(`${options.key}.error`, {
+                    target.dispatchEvent(new CustomEvent(`${options.key}.load`, {
                         detail: { data: (options.element ? null : data) },
                     }));
                 }
@@ -120,7 +141,7 @@ export class XHRHelper{
             onPropSet: (prop) => {
                 Region.Get(regionId).GetChanges().AddComposed(prop, scopeId);
             },
-        });
+        }, (options.fetchMode || FetchMode.Replace));
 
         if (options.expression && target){//Bind expression
             let elementScope = options.region.AddElement(target, true), lazyUrl: string = null;
@@ -160,7 +181,7 @@ export class XHRHelper{
                     return false;
                 }
                 
-                let url = ExtendedDirectiveHandler.Evaluate(myRegion, target, options.expression), reload = false;
+                let url = ExtendedDirectiveHandler.Evaluate(myRegion, target, options.expression);
                 if (typeof url === 'string' || url === null){
                     if (options.lazy){
                         lazyUrl = url;
@@ -171,6 +192,14 @@ export class XHRHelper{
                 }
             }, true, target);
         }
+    }
+
+    public static ExtractFetchMode(options: Array<string>){
+        if (options.includes('append')){
+            return FetchMode.Append;
+        }
+
+        return (options.includes('prepend') ? FetchMode.Prepend : FetchMode.Replace);
     }
 }
 
@@ -188,6 +217,8 @@ export class XHRDirectiveHandler extends ExtendedDirectiveHandler{
                 if (ancestorIndex != -1){//Resolve ancestor
                     ancestor = (((ancestorIndex + 1) < directive.arg.options.length) ? (parseInt(directive.arg.options[ancestorIndex + 1]) || 0) : 0);
                 }
+
+                lazy = true;
             }
             
             XHRHelper.BindFetch({
@@ -197,6 +228,7 @@ export class XHRDirectiveHandler extends ExtendedDirectiveHandler{
                 element: element,
                 lazy: lazy,
                 ancestor: ancestor,
+                fetchMode: XHRHelper.ExtractFetchMode(directive.arg.options),
             });
 
             return DirectiveHandlerReturn.Handled;
@@ -217,9 +249,10 @@ export class JSONDirectiveHandler extends ExtendedDirectiveHandler{
                 key: this.key_,
                 expression: directive.value,
                 expressionElement: element,
-                formatData: (data) => {
+                fetchMode: XHRHelper.ExtractFetchMode(directive.arg.options),
+                formatData: (data, mode) => {
                     if (!data){
-                        return {};
+                        return ((mode === FetchMode.Replace) ? {} : []);
                     }
                     
                     try{
@@ -227,8 +260,35 @@ export class JSONDirectiveHandler extends ExtendedDirectiveHandler{
                     }
                     catch{}
 
-                    return {};
-                }
+                    return ((mode === FetchMode.Replace) ? {} : []);
+                },
+                setData: (state, value, mode, regionId, scopeId) => {
+                    if (mode !== FetchMode.Replace){//Add to array
+                        if (Array.isArray(value)){
+                            if (mode === FetchMode.Append){
+                                Region.Get(regionId).GetChanges().AddComposed(`${value.length}`, `${scopeId}.data.push`, `${scopeId}.items`);
+                                (state.data as Array<any>).push(...value);
+                            }
+                            else{//Prepend
+                                Region.Get(regionId).GetChanges().AddComposed(`${value.length}`, `${scopeId}.data.unshift`, `${scopeId}.items`);
+                                (state.data as Array<any>).unshift(...value);
+                            }
+                        }
+                        else if (mode === FetchMode.Append){
+                            Region.Get(regionId).GetChanges().AddComposed('1', `${scopeId}.data.push`, `${scopeId}.items`);
+                            (state.data as Array<any>).push(value);
+                        }
+                        else{//Prepend
+                            Region.Get(regionId).GetChanges().AddComposed('1', `${scopeId}.data.unshift`, `${scopeId}.items`);
+                            (state.data as Array<any>).unshift(value);
+                        }
+                    }
+                    else{//Replace
+                        state.data = (Array.isArray(value) ? value : [value]);
+                    }
+
+                    return true;
+                },
             });
 
             return DirectiveHandlerReturn.Handled;
