@@ -1,4 +1,4 @@
-import { IRegion, IElementScope, IState, IProxy, IChanges, IChangeRefInfo, IEvaluator, IProcessor, IConfig, IDatabase, IDirectiveManager, IGlobalManager, IOutsideEventManager, IIntersectionObserverManager, IAlertHandler, IRootElement, IParsedAnimation, IAnimationParser, IResizeObserver } from './typedefs';
+import { IRegion, IElementScope, IState, IProxy, IChanges, IChangeRefInfo, IEvaluator, IProcessor, IConfig, IDatabase, IDirectiveManager, IGlobalManager, IOutsideEventManager, IIntersectionObserverManager, IAlertHandler, IRootElement, IParsedAnimation, IAnimationParser, AnimationTargetType, IResizeObserver } from './typedefs';
 export declare class Region implements IRegion {
     private rootElement_;
     private static components_;
@@ -71,7 +71,8 @@ export declare class Region implements IRegion {
     SetAlertHandler(handler: IAlertHandler): IAlertHandler;
     GetAlertHandler(): IAlertHandler;
     Alert(data: any): boolean | void;
-    GetRootProxy(): any;
+    ParseAnimation(options: Array<string>, target?: AnimationTargetType, parse?: boolean): IParsedAnimation;
+    GetRootProxy(): IProxy;
     FindProxy(path: string): IProxy;
     AddProxy(proxy: IProxy): void;
     RemoveProxy(path: string): void;
@@ -123,7 +124,7 @@ export declare class Region implements IRegion {
     static Alert(data: any): boolean | void;
     static SetAnimationParser(parser: IAnimationParser): void;
     static GetAnimationParser(): IAnimationParser;
-    static ParseAnimation(options: Array<string>, target?: HTMLElement | ((fraction: number) => void), parse?: boolean): IParsedAnimation;
+    static ParseAnimation(options: Array<string>, target?: AnimationTargetType, parse?: boolean): IParsedAnimation;
     static Get(id: string): IRegion;
     static GetCurrent(id: string): IRegion;
     static Infer(element: HTMLElement | string): IRegion;

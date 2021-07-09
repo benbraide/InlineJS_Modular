@@ -44,7 +44,7 @@ export class ControlHelper{
             regionId: region.GetId(),
             template: element,
             parent: element.parentElement,
-            animator: Region.ParseAnimation(options, null, animate),
+            animator: region.ParseAnimation(options, null, animate),
             blueprint: (element.content.firstElementChild as HTMLElement),
         };
 

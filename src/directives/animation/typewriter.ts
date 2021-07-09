@@ -10,8 +10,15 @@ interface TypewriterBlockInfo{
     tagName?: string;
 }
 
+interface TypewriterBlockEntry{
+    content: string | TypewriterBlockInfo;
+    element: HTMLElement;
+    cursor: HTMLElement;
+    index: number;
+}
+
 interface TypewriterLineInfo{
-    blocks: Array<string | TypewriterBlockInfo>;
+    blocks: Array<TypewriterBlockEntry>;
     length: number;
 }
 
@@ -25,32 +32,57 @@ export class TypewriterDirectiveHandler extends ExtendedDirectiveHandler{
 
             let data = ExtendedDirectiveHandler.Evaluate(region, element, directive.value), state = {
                 lines: new Array<TypewriterLineInfo>(),
-                currentLineIndex: -1,
-                currentColumnIndex: -1,
+                current: {
+                    lineIndex: -1,
+                    block: (null as TypewriterBlockEntry),
+                },
                 iterations: 0,
                 deleting: false,
                 complete: false,
                 active: true,
             };
 
+            let buildBlockEntry = (content: string | TypewriterBlockInfo, index: number): TypewriterBlockEntry => {
+                let blockElement: HTMLElement;
+                if (typeof content !== 'string'){
+                    blockElement = document.createElement(content.tagName || 'span');
+                    Object.entries(content.attributes || {}).forEach(([key, value]) => blockElement.setAttribute(key, value));
+                }
+                else{
+                    blockElement = document.createElement('span');
+                }
+
+                let cursor = document.createElement('span');
+                cursor.style.borderRight = '1px solid #333333';
+                blockElement.appendChild(cursor);
+
+                return {
+                    content: content,
+                    element: blockElement,
+                    cursor: cursor,
+                    index: index,
+                };
+            };
+
             let length = 0;
             let addStringLine = (line: string) => {
                 state.lines.push({
-                    blocks: [line],
+                    blocks: [buildBlockEntry(line, 0)],
                     length: line.length,
                 });
+
                 length += line.length;
             };
 
             if (Array.isArray(data)){
-                data.forEach((entry) => {
-                    if (Array.isArray(entry)){//Collection of blocks
+                data.forEach((item) => {
+                    if (Array.isArray(item)){//Collection of blocks
                         let line: TypewriterLineInfo = {
                             blocks: [],
                             length: 0,
                         };
 
-                        entry.forEach((block) => {
+                        item.forEach((block) => {
                             let formattedBlock: TypewriterBlockInfo;
                             if (typeof block === 'string'){//Block is raw string
                                 formattedBlock = {
@@ -61,22 +93,23 @@ export class TypewriterDirectiveHandler extends ExtendedDirectiveHandler{
                                 formattedBlock = block;
                             }
 
-                            line.blocks.push(formattedBlock);
-                            line.length += (formattedBlock.contiguous ? 1 : formattedBlock.text.length);
-                            length += (formattedBlock.contiguous ? 1 : formattedBlock.text.length);
+                            line.blocks.push(buildBlockEntry(formattedBlock, line.blocks.length));
+                            line.length += formattedBlock.text.length;
+                            length += formattedBlock.text.length;
                         });
 
                         state.lines.push(line);
                     }
-                    else if (typeof entry !== 'string'){//Line is a single block
+                    else if (typeof item !== 'string'){//Line is a single block
                         state.lines.push({
-                            blocks: [(entry as TypewriterBlockInfo)],
-                            length: (entry as TypewriterBlockInfo).text.length,
+                            blocks: [buildBlockEntry((item as TypewriterBlockInfo), 0)],
+                            length: (item as TypewriterBlockInfo).text.length,
                         });
-                        length += (entry as TypewriterBlockInfo).text.length;
+
+                        length += (item as TypewriterBlockInfo).text.length;
                     }
                     else{//Line is a raw string
-                        addStringLine(entry);
+                        addStringLine(item);
                     }
                 });
             }
@@ -135,46 +168,145 @@ export class TypewriterDirectiveHandler extends ExtendedDirectiveHandler{
                 }
             });
 
-            let getRange = (line: TypewriterLineInfo, length: number) => {
-                let value = '';
-                for (let i = 0; i < line.blocks.length && 0 < length; ++i){
-                    if (typeof line.blocks[i] !== 'string'){
-                        let attributes = '';
-                        Object.entries((line.blocks[i] as TypewriterBlockInfo).attributes || {}).forEach(([key, value]) => {
-                            attributes += ` ${key}="${value}"`;
-                        });
+            let initBlock = (block: TypewriterBlockEntry) => {
+                if (options.cursor){
+                    block.cursor.style.display = 'inline';
+                }
+                element.appendChild(block.element);
+            };
 
-                        let tagName = ((line.blocks[i] as TypewriterBlockInfo).tagName || 'span');
-                        if ((line.blocks[i] as TypewriterBlockInfo).contiguous){
-                            value += `<${tagName}${attributes}>${(line.blocks[i] as TypewriterBlockInfo).text}</${tagName}>`;
-                            length -= 1;
-                        }
-                        else{//Block text is a collection
-                            value += `<${tagName}${attributes}>${(line.blocks[i] as TypewriterBlockInfo).text.substr(0, length)}</${tagName}>`;
-                            length -= (line.blocks[i] as TypewriterBlockInfo).text.length;
-                        }
-                    }
-                    else{//Content is raw string
-                        value += (line.blocks[i] as string).substr(0, length);
-                        length -= (line.blocks[i] as string).length;
-                    }
+            let uninitBlock = (block: TypewriterBlockEntry) => {
+                if (!block){
+                    return;
+                }
+                
+                element.removeChild(block.element);
+                if (options.cursor){
+                    block.cursor.style.display = 'none';
+                }
+            };
+
+            let getPreviousBlock = (line: TypewriterLineInfo, block: TypewriterBlockEntry | number) => {
+                if (block === null){
+                    return line.blocks[(line.blocks.length - 1)];
                 }
 
-                return value;
+                if (options.cursor && typeof block !== 'number'){
+                    uninitBlock(block);
+                }
+                
+                let nextIndex = (((typeof block === 'number') ? block : block.index) - 1);
+                return ((0 <= nextIndex) ? line.blocks[nextIndex] : null);
+            }
+
+            let getNextBlock = (line: TypewriterLineInfo, block: TypewriterBlockEntry | number) => {
+                if (block === null){
+                    return line.blocks[0];
+                }
+
+                if (options.cursor && typeof block !== 'number'){
+                    block.cursor.style.display = 'none';
+                }
+                
+                let nextIndex = (((typeof block === 'number') ? block : block.index) + 1);
+                return ((nextIndex < line.blocks.length) ? line.blocks[nextIndex] : null);
+            }
+
+            let getAdvancedBlock = (line: TypewriterLineInfo, block: TypewriterBlockEntry | number, isDeleting: boolean) => {
+                return (isDeleting ? getPreviousBlock(line, block) : getNextBlock(line, block));
             };
 
-            let getNextIndex = (index: number) => {
-                index = (options.random ? Math.floor(Math.random() * state.lines.length) : (index + 1));
-                return ((index < state.lines.length) ? index : 0);
+            let decrementBlock = (block: TypewriterBlockEntry) => {
+                if (!block){
+                    return false;
+                }
+                
+                block.element.removeChild(block.cursor);
+                
+                let currentLength = block.element.textContent.length, contentLength = ((typeof block.content === 'string') ? block.content.length : block.content.text.length);
+                if (currentLength == 0){
+                    block.element.appendChild(block.cursor);
+                    return false;//Reached end
+                }
+
+                if (typeof block.content !== 'string'){
+                    if (block.content.contiguous){
+                        block.element.textContent = '';
+                    }
+                    else{//Extract required
+                        block.element.textContent = ((currentLength == 1) ? '' : block.content.text.substr(0, (currentLength - 1)));
+                    }
+                }
+                else{//Raw string
+                    block.element.textContent = ((currentLength == 1) ? '' : block.content.substr(0, (currentLength - 1)));
+                }
+
+                if (currentLength == contentLength){//Init
+                    initBlock(block);
+                }
+
+                block.element.appendChild(block.cursor);
+
+                return true;
             };
 
-            let initNext = () => {
-                state.currentLineIndex = getNextIndex(state.currentLineIndex);
-                state.currentColumnIndex = 0;
+            let incrementBlock = (block: TypewriterBlockEntry) => {
+                if (!block){
+                    return false;
+                }
+
+                block.element.removeChild(block.cursor);
+                
+                let currentLength = block.element.textContent.length;
+                if (currentLength == ((typeof block.content === 'string') ? block.content.length : block.content.text.length)){
+                    block.element.appendChild(block.cursor);
+                    return false;//Reached end
+                }
+
+                if (typeof block.content !== 'string'){
+                    if (block.content.contiguous){
+                        block.element.textContent = block.content.text;
+                    }
+                    else{//Extract required
+                        block.element.textContent = block.content.text.substr(0, (currentLength + 1));
+                    }
+                }
+                else{//Raw string
+                    block.element.textContent = block.content.substr(0, (currentLength + 1));
+                }
+
+                if (currentLength == 0){//Init
+                    initBlock(block);
+                }
+
+                block.element.appendChild(block.cursor);
+
+                return true;
+            };
+
+            let advanceBlock = (block: TypewriterBlockEntry, isDeleting: boolean) => {
+                return (isDeleting ? decrementBlock(block) : incrementBlock(block));
+            };
+
+            let getNextLineIndex = (index: number) => {
+                if (index != -1 && index < state.lines.length && !options.delete){
+                    state.lines[index].blocks.forEach((block) => {//Reset
+                        block.element.removeChild(block.cursor);
+                        block.element.textContent = '';
+                        block.element.appendChild(block.cursor);
+                    });
+                }
+                
+                let newIndex = (options.random ? Math.floor(Math.random() * state.lines.length) : (index + 1));
+                return ((newIndex < state.lines.length) ? newIndex : 0);
             };
 
             let startTimestamp: DOMHighResTimeStamp = null, duration = options.delay, regionId = region.GetId();
             let pass = (timestamp: DOMHighResTimeStamp) => {
+                if (!state.active){
+                    return;
+                }
+                
                 if (startTimestamp === null){
                     startTimestamp = timestamp;
                 }
@@ -186,55 +318,48 @@ export class TypewriterDirectiveHandler extends ExtendedDirectiveHandler{
 
                 if (!state.complete){
                     startTimestamp = timestamp;
-
-                    let value: string;
-                    if (state.deleting){//Remove characters
-                        if (state.lines[state.currentLineIndex].length < state.currentColumnIndex){
-                            duration = options.delay;
-                        }
-                        
-                        value = getRange(state.lines[state.currentLineIndex], --state.currentColumnIndex);
-                        if (state.currentColumnIndex <= 0){//Done delete
+                    if (!advanceBlock(state.current.block, state.deleting)){
+                        state.current.block = getAdvancedBlock(state.lines[state.current.lineIndex], state.current.block, state.deleting);
+                        if (!state.current.block){//Complete
                             startTimestamp = null;
-                            state.deleting = false;
-                            state.complete = true;
-                            duration = options.interval;
+                            if (options.delete && !state.deleting){//Begin delete
+                                state.deleting = true;
+                                state.complete = false;
+                                duration = options.deleteDelay;
+                            }
+                            else{//Complete
+                                state.deleting = false;
+                                state.complete = true;
+                                duration = options.interval;
+                            }
+                        }
+                        else{//Advance
+                            advanceBlock(state.current.block, state.deleting);
                         }
                     }
-                    else{//Add characters
-                        value = getRange(state.lines[state.currentLineIndex], ++state.currentColumnIndex);
-                        if (state.lines[state.currentLineIndex].length < state.currentColumnIndex && options.delete){//Begin delete
-                            startTimestamp = null;
-                            state.deleting = true;
-                            duration = options.deleteDelay;
-                        }
-                        else if (state.lines[state.currentLineIndex].length < state.currentColumnIndex){
-                            startTimestamp = null;
-                            state.complete = true;
-                            duration = options.interval;
-                        }
-                    }
-
-                    Region.InsertHtml(element, value, true, false, Region.Get(regionId));
-                    requestAnimationFrame(pass);
                 }
-                else if (options.iterations == -1 || (++state.iterations < options.iterations)){//Request next line
+                else{//Request next line
                     startTimestamp = null;
                     state.complete = false;
+                    
                     duration = options.delay;
+                    state.current.lineIndex = getNextLineIndex(state.current.lineIndex);
 
-                    initNext();
-                    requestAnimationFrame(pass);
+                    if (options.iterations != -1 && (options.iterations <= ++state.iterations)){
+                        return;
+                    }
                 }
+                
+                requestAnimationFrame(pass);
             };
 
+            state.current.lineIndex = getNextLineIndex(-1);
             if (options.lazy){
                 let intersectionOptions = {
                     root: ((options.ancestor == -1) ? null : region.GetElementAncestor(element, options.ancestor)),
                 };
                 
                 region.GetIntersectionObserverManager().Add(element, IntersectionObserver.BuildOptions(intersectionOptions)).Start((entry, key) => {
-                    initNext();
                     requestAnimationFrame(pass);
                     
                     let myRegion = Region.Get(regionId);
@@ -244,7 +369,6 @@ export class TypewriterDirectiveHandler extends ExtendedDirectiveHandler{
                 });
             }
             else{//Immediate initialization
-                initNext();
                 requestAnimationFrame(pass);
             }
 

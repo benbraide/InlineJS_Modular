@@ -20,6 +20,7 @@ import {
     AnimationBindInfo,
     IParsedAnimation,
     IAnimationParser,
+    AnimationTargetType,
     IResizeObserver,
 } from './typedefs'
 
@@ -38,24 +39,67 @@ import { ResizeObserver } from './observers/resize'
 import { RootProxy, NoResult } from './proxy'
 
 class NoAnimation implements IParsedAnimation{
-    public Run(show: boolean, target?: HTMLElement | ((fraction: number) => void), afterHandler?: (isCanceled?: boolean, show?: boolean) => void, beforeHandler?: (show?: boolean) => void): void{
+    private beforeHandlers_ = new Array<() => void>();
+    private afterHandlers_ = new Array<(isCanceled?: boolean) => void>();
+    
+    public Run(show: boolean, target?: AnimationTargetType, afterHandler?: (isCanceled?: boolean, show?: boolean) => void, beforeHandler?: (show?: boolean) => void): void{
         if (beforeHandler){
-            beforeHandler(show);
+            try{
+                beforeHandler(show);
+            }
+            catch{}
         }
+
+        this.beforeHandlers_.forEach((handler) => {
+            try{
+                handler();
+            }
+            catch{}
+        });
 
         if (target && typeof target === 'function'){
             target(show ? 1 : 0);
         }
         
         if (afterHandler){
-            afterHandler(false, show);
+            try{
+                afterHandler(false, show);
+            }
+            catch{}
         }
+
+        this.afterHandlers_.forEach((handler) => {
+            try{
+                handler();
+            }
+            catch{}
+        });
     }
 
-    public Cancel(show: boolean, target?: HTMLElement | ((fraction: number) => void)): void{}
+    public Cancel(): void{}
 
-    public Bind(show: boolean, target?: HTMLElement | ((fraction: number) => void)): AnimationBindInfo{
+    public Bind(target?: AnimationTargetType): AnimationBindInfo{
         return null;
+    }
+
+    public BindOne(show: boolean, target?: AnimationTargetType): AnimationBindInfo{
+        return null;
+    }
+
+    public AddBeforeHandler(handler: () => void): void{
+        this.beforeHandlers_.push(handler);
+    }
+
+    public RemoveBeforeHandler(handler: () => void): void{
+        this.beforeHandlers_.splice(this.beforeHandlers_.findIndex(item => (item === handler)), 1);
+    }
+
+    public AddAfterHandler(handler: (isCanceled?: boolean) => void): void{
+        this.afterHandlers_.push(handler);
+    }
+
+    public RemoveAfterHandler(handler: (isCanceled?: boolean) => void): void{
+        this.afterHandlers_.splice(this.afterHandlers_.findIndex(item => (item === handler)), 1);
     }
 }
 
@@ -334,6 +378,50 @@ export class Region implements IRegion{
 
     public Alert(data: any): boolean | void{
         return Region.Alert(data);
+    }
+
+    public ParseAnimation(options: Array<string>, target?: AnimationTargetType, parse?: boolean): IParsedAnimation{
+        if (!target || typeof target === 'function'){
+            return Region.ParseAnimation(options, target, parse);
+        }
+
+        if (!Region.animationParser_ || !parse){
+            return Region.noAnimation_;
+        }
+        
+        let parsed = Region.animationParser_.Parse(options, target);
+        if (!parsed){
+            return Region.noAnimation_;
+        }
+
+        let elementScope = this.AddElement(target);
+        if (!elementScope){
+            return parsed;
+        }
+
+        let regionId = this.id_, active = false, scopeId = this.GenerateDirectiveScopeId(null, '_anime');
+        elementScope.locals['$animation'] = Region.CreateProxy((prop) =>{
+            if (prop === 'active'){
+                Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
+                return active;
+            }
+        }, ['active', 'cancel']);
+
+        parsed.AddBeforeHandler(() => {
+            if (!active){
+                active = true;
+                Region.Get(regionId).GetChanges().AddComposed('active', scopeId);
+            }
+        });
+        
+        parsed.AddAfterHandler((isCanceled) => {
+            if (!isCanceled && active){
+                active = false;
+                Region.Get(regionId).GetChanges().AddComposed('active', scopeId);
+            }
+        });
+        
+        return parsed;
     }
 
     public GetRootProxy(){
@@ -773,8 +861,8 @@ export class Region implements IRegion{
         return Region.animationParser_;
     }
     
-    public static ParseAnimation(options: Array<string>, target?: HTMLElement | ((fraction: number) => void), parse = true): IParsedAnimation{
-        return ((Region.animationParser_ && parse) ? Region.animationParser_.Parse(options, target) : Region.noAnimation_);
+    public static ParseAnimation(options: Array<string>, target?: AnimationTargetType, parse = true): IParsedAnimation{
+        return ((Region.animationParser_ && parse) ? (Region.animationParser_.Parse(options, target) || Region.noAnimation_) : Region.noAnimation_);
     }
 
     public static Get(id: string): IRegion{

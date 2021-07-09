@@ -10,13 +10,12 @@ export class ShowDirectiveHandler extends DirectiveHandler{
                 showValue = 'block';
             }
 
-            let regionId = region.GetId(), animator = Region.ParseAnimation(directive.arg.options, element, (directive.arg.key === 'animate')), lastValue: boolean = null;
+            let regionId = region.GetId(), animator = region.ParseAnimation(directive.arg.options, element, (directive.arg.key === 'animate')), lastValue: boolean = null;
             region.GetState().TrapGetAccess(() => {
                 lastValue = !! DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value);
                 element.style.display = (lastValue ? showValue : 'none');
             }, () => {
                 if (lastValue != (!! DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value))){
-                    animator.Cancel(lastValue);
                     animator.Run((lastValue = !lastValue), element, (isCanceled, show) => {//Called after animation
                         if (!show && !isCanceled){
                             element.style.display = 'none';//Hide element after animation

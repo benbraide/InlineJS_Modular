@@ -17,6 +17,12 @@ import { ThemeGlobalHandler } from './globals/theme'
 import { PageGlobalHandler } from './globals/page'
 import { RouterGlobalHandler } from './globals/router'
 
+import { AnimationParser } from './animation/parser'
+
+import { OpacityAnimationActor } from './animation/actors/opacity'
+
+import { LinearEase } from './animation/easing/linear'
+
 Region.SetAlertHandler(new SwalAlertHandler());
 
 Region.GetDirectiveManager().AddHandler(new WatchDirectiveHandler());
@@ -42,3 +48,11 @@ const routerGlobal = new RouterGlobalHandler();
 
 Region.GetGlobalManager().AddHandler(new PageGlobalHandler(routerGlobal));
 Region.GetGlobalManager().AddHandler(routerGlobal);
+
+const animationParser = new AnimationParser();
+
+animationParser.AddActor(new OpacityAnimationActor());
+
+animationParser.AddEase(new LinearEase());
+
+Region.SetAnimationParser(animationParser);

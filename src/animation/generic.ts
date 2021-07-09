@@ -1,4 +1,4 @@
-import { IAnimation, IAnimationActor, IAnimationEase, AnimationBindInfo } from '../typedefs'
+import { IAnimation, IAnimationActor, IAnimationEase, AnimationBindInfo, AnimationTargetType } from '../typedefs'
 
 interface AnimationBindInternal{
     target: HTMLElement | ((fraction: number) => void);
@@ -16,7 +16,11 @@ interface AnimationBindInternal{
 export class Animation implements IAnimation{
     public constructor(protected actors_: Array<IAnimationActor>, protected ease_: IAnimationEase, protected duration_: number, protected isInfinite_ = false, protected interval_ = 0){}
     
-    public Bind(target: HTMLElement | ((fraction: number) => void)): AnimationBindInfo{
+    public Bind(target: AnimationTargetType): AnimationBindInfo{
+        if (!target){
+            return null;
+        }
+        
         let info: AnimationBindInternal = {
             target: target,
             actors: this.actors_,
@@ -101,13 +105,19 @@ export class Animation implements IAnimation{
                 catch{};
             }
 
-            if (!canceled && info.isInfinite){
-                setTimeout(() => {//Schedule next run with the specified interval
+            if (canceled || !info.isInfinite){
+                info.isActive = false;
+                info.afterHandlers.forEach((handler) => {
+                    try{
+                        handler(canceled);
+                    }
+                    catch{}
+                });
+            }
+            else{//Schedule next run with the specified interval
+                setTimeout(() => {
                     requestAnimationFrame(pass);
                 }, info.interval);
-            }
-            else{
-                info.isActive = false;
             }
         };
 
@@ -118,6 +128,13 @@ export class Animation implements IAnimation{
                 }
                 
                 info.isActive = true;
+                info.beforeHandlers.forEach((handler) => {
+                    try{
+                        handler();
+                    }
+                    catch{}
+                });
+                
                 setTimeout(() => {//Watcher - required if 'requestAnimationFrame' doesn't run
                     end();
                 }, (info.duration + 72));
@@ -145,6 +162,7 @@ export class Animation implements IAnimation{
             removeAfterHandler: (handler: (isCanceled?: boolean) => void) => {
                 info.afterHandlers.splice(info.afterHandlers.findIndex(item => (item === handler)));
             },
+            getTarget: () => info.target,
         };
     }
 }

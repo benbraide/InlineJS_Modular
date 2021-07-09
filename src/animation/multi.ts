@@ -2,11 +2,9 @@ import { IAnimationActor, IAnimationEase } from '../typedefs'
 import { Animation } from './generic'
 
 export class MultiAnimation extends Animation{
-    protected multiActors_: Record<string, Array<IAnimationActor>>;
-    protected multiEase_: Record<string, IAnimationEase>;
-    
-    public constructor(multiActors: Record<string, Array<IAnimationActor>>, multiEase: Record<string, IAnimationEase>, duration: number, isInfinite = false, interval = 0){
-        super(Object.values(multiActors)[0], Object.values(multiEase)[0], duration, isInfinite, interval);
+    public constructor(protected multiActors_: Record<string, Array<IAnimationActor>>, protected multiEase_: Record<string, IAnimationEase>,
+        protected multiDuration_: Record<string, number>, isInfinite = false, interval = 0){
+        super(Object.values(multiActors_)[0], Object.values(multiEase_)[0], Object.values(multiDuration_)[0], isInfinite, interval);
     }
 
     public Add(key: string, actors: Array<IAnimationActor>, ease: IAnimationEase){
@@ -66,6 +64,7 @@ export class MultiAnimation extends Animation{
     public SetActive(key: string){
         this.SetActiveActors(key);
         this.SetActiveEase(key);
+        this.SetActiveDuration(key);
     }
 
     public SetActiveActors(key: string){
@@ -77,6 +76,12 @@ export class MultiAnimation extends Animation{
     public SetActiveEase(key: string){
         if (key in this.multiEase_){
             this.ease_ = this.multiEase_[key];
+        }
+    }
+
+    public SetActiveDuration(key: string){
+        if (key in this.multiDuration_){
+            this.duration_ = this.multiDuration_[key];
         }
     }
 }

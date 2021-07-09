@@ -27,7 +27,7 @@
     <div x-data x-overlay:click="$overlay.visible = false">
         <button x-on:click="$overlay.visible = true" x-bind="$overlay.overflow ? $$class($body).add('pad') : $$class($body).remove('pad')">Show Overlay</button>
     </div>
-    <p x-typewriter.delete.cursor.lazy="['My very first typewriting', 'Another typing', ['Final ', {text: 'subsequent', tagName: 'p', attributes: {style: 'font-weight: bold'}}, ' tries']]" x-data></p>
+    <p style="height: 5rem;" x-typewriter.delete.cursor.lazy="typewriterList()" x-data></p>
     <div x-component="first" x-data="{email: 'user.yahoo@yahoo.com', name: 'John Doe', state: true, getName(){ return this.name }}">
         <h2 x-style:color="color" x-on:click="color = 'red'">First Component</h2>
         <div>
@@ -146,6 +146,24 @@
     </div>
     <script src="/dist/inlinejs-extended.js"></script>
     <script>
+        function typewriterList(){
+            return [
+                'My very first typewriting',
+                'Another typing',
+                [
+                    'Final ',
+                    {
+                        text: 'subsequent',
+                        tagName: 'p',
+                        attributes: {
+                            style: 'font-weight: bold',
+                        },
+                    },
+                    ' tries',
+                ],
+            ];
+        }
+        
         function cartData(){
             return {
                 list: {

@@ -281,13 +281,20 @@ export interface IAlertHandler{
 }
 
 export interface IAnimationEase{
+    GetKey(): string;
     Run(time: number, duration: number): number;
 }
 
 export interface IAnimationActor{
+    GetKey(): string;
     Prepare(element: HTMLElement): void;
     Step(fraction: number, element: HTMLElement): void;
+    GetPreferredEase(show?: boolean): IAnimationEase;
+    GetPreferredDuration(show?: boolean): number;
 }
+
+export type AnimationHandlerType = (fraction: number, actors?: Array<IAnimationActor>) => void;
+export type AnimationTargetType = HTMLElement | AnimationHandlerType;
 
 export interface AnimationBindInfo{
     run: () => void;
@@ -296,20 +303,31 @@ export interface AnimationBindInfo{
     removeBeforeHandler: (handler: () => void) => void;
     addAfterHandler: (handler: (isCanceled?: boolean) => void) => void;
     removeAfterHandler: (handler: (isCanceled?: boolean) => void) => void;
+    getTarget: () => AnimationTargetType;
 }
 
 export interface IAnimation{
-    Bind(target: HTMLElement | ((fraction: number) => void)): AnimationBindInfo;
+    Bind(target: AnimationTargetType): AnimationBindInfo;
 }
 
-export interface IParsedAnimation{
-    Run(show: boolean, target?: HTMLElement | ((fraction: number) => void), afterHandler?: (isCanceled?: boolean, show?: boolean) => void, beforeHandler?: (show?: boolean) => void): void;
-    Cancel(show: boolean, target?: HTMLElement | ((fraction: number) => void)): void;
-    Bind(show: boolean, target?: HTMLElement | ((fraction: number) => void)): AnimationBindInfo;
+export interface IParsedAnimation extends IAnimation{
+    Run(show: boolean, target?: AnimationTargetType, afterHandler?: (isCanceled?: boolean, show?: boolean) => void, beforeHandler?: (show?: boolean) => void): void;
+    Cancel(target?: AnimationTargetType): void;
+    BindOne(show: boolean, target?: AnimationTargetType): AnimationBindInfo;
+    AddBeforeHandler(handler: () => void): void;
+    RemoveBeforeHandler(handler: () => void): void;
+    AddAfterHandler(handler: (isCanceled?: boolean) => void): void;
+    RemoveAfterHandler(handler: (isCanceled?: boolean) => void): void;
 }
 
 export interface IAnimationParser{
-    Parse(options: Array<string>, target?: HTMLElement | ((fraction: number) => void)): IParsedAnimation;
+    AddEase(ease: IAnimationEase): void;
+    RemoveEase(key: string): void;
+    GetEase(key: string): IAnimationEase;
+    AddActor(actor: IAnimationActor): void;
+    RemoveActor(key: string): void;
+    GetActor(key: string): IAnimationActor;
+    Parse(options: Array<string>, target?: AnimationTargetType): IParsedAnimation;
 }
 
 export interface IDatabase{
@@ -348,6 +366,7 @@ export interface IRegion{
     SetAlertHandler(handler: IAlertHandler): IAlertHandler;
     GetAlertHandler(): IAlertHandler;
     Alert(data: any): boolean | void;
+    ParseAnimation(options: Array<string>, target?: AnimationTargetType, parse?: boolean): IParsedAnimation;
     GetRootProxy(): IProxy;
     FindProxy(path: string): IProxy;
     AddProxy(proxy: IProxy): void;

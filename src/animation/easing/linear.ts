@@ -1,7 +1,7 @@
-import { IAnimationEase } from '../../typedefs'
+import { AnimationEase } from './generic';
 
-export class LinearEase implements IAnimationEase{
-    public Run(time: number, duration: number): number{
-        return (time / duration);
+export class LinearEase extends AnimationEase{
+    public constructor(){
+        super('linear', (time, duration) => ((duration == 0) ? 0 : (time / duration)));
     }
 }

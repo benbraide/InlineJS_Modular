@@ -1,4 +1,4 @@
-import { IAnimation, IAnimationActor, IAnimationEase, AnimationBindInfo } from '../typedefs';
+import { IAnimation, IAnimationActor, IAnimationEase, AnimationBindInfo, AnimationTargetType } from '../typedefs';
 export declare class Animation implements IAnimation {
     protected actors_: Array<IAnimationActor>;
     protected ease_: IAnimationEase;
@@ -6,5 +6,5 @@ export declare class Animation implements IAnimation {
     protected isInfinite_: boolean;
     protected interval_: number;
     constructor(actors_: Array<IAnimationActor>, ease_: IAnimationEase, duration_: number, isInfinite_?: boolean, interval_?: number);
-    Bind(target: HTMLElement | ((fraction: number) => void)): AnimationBindInfo;
+    Bind(target: AnimationTargetType): AnimationBindInfo;
 }

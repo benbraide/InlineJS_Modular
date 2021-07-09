@@ -1,6 +1,6 @@
 import { IAnimationEase } from '../../typedefs';
-export declare class InvertedEase implements IAnimationEase {
+import { AnimationEase } from './generic';
+export declare class InvertedEase extends AnimationEase {
     private targetEase_;
     constructor(targetEase_: IAnimationEase);
-    Run(time: number, duration: number): number;
 }
