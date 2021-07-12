@@ -38,7 +38,7 @@ import { IntersectionObserverManager } from './managers/observers/intersection'
 import { ResizeObserver } from './observers/resize'
 import { RootProxy, NoResult } from './proxy'
 
-class NoAnimation implements IParsedAnimation{
+export class NoAnimation implements IParsedAnimation{
     private beforeHandlers_ = new Array<() => void>();
     private afterHandlers_ = new Array<(isCanceled?: boolean) => void>();
     

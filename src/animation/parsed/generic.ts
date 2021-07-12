@@ -1,7 +1,7 @@
 import { IAnimationActor, IAnimationEase, IParsedAnimation, AnimationBindInfo, AnimationTargetType } from "../../typedefs";
 import { OpacityAnimationActor } from "../actors/opacity";
+import { DefaultEase } from "../easing/default";
 import { InvertedEase } from "../easing/inverted";
-import { LinearEase } from "../easing/linear";
 import { MultiAnimation } from "../multi";
 
 export enum ParsedElementAnimationMode{
@@ -15,6 +15,8 @@ export interface ParsedElementAnimationOptions{
     eases: Array<IAnimationEase>;
     durations: Array<number>;
     target?: AnimationTargetType;
+    infinite?: boolean;
+    interval?: number;
 }
 
 interface ParsedElementAnimationActors{
@@ -51,7 +53,7 @@ export class ParsedAnimation implements IParsedAnimation{
             hide: (((options.actors.length > 1) ? options.actors[1] : null) || showActor),
         };
 
-        let showEase = (((options.eases.length > 0) ? options.eases[0] : null) || this.actors_.show.GetPreferredEase(true) || new LinearEase());
+        let showEase = (((options.eases.length > 0) ? options.eases[0] : null) || this.actors_.show.GetPreferredEase(true) || new DefaultEase());
         this.eases_ = {
             show: showEase,
             hide: new InvertedEase(((options.eases.length > 1) ? options.eases[1] : null) || this.actors_.show.GetPreferredEase(false) || showEase),
@@ -72,7 +74,7 @@ export class ParsedAnimation implements IParsedAnimation{
         }, {
             show: this.durations_.show,
             hide: this.durations_.hide,
-        });
+        }, options.infinite, options.interval);
 
         this.target_ = options.target;
     }
@@ -84,22 +86,17 @@ export class ParsedAnimation implements IParsedAnimation{
             return;
         }
 
-        let isNoAnimation = this.IsNoAnimation_(show), bound = this.ExtractExisting_(target);
-        if (bound){
-            bound.cancel(isNoAnimation);
-        }
-
-        if (isNoAnimation){
-            this.RunNoAnimation_(show, beforeHandler, afterHandler);
-            return;
-        }
-
         this.multi_.SetActive(show ? 'show' : 'hide');
-        bound = this.multi_.Bind(target);
+        let bound = this.multi_.Bind(target);
 
         if (!bound){
             this.RunNoAnimation_(show, beforeHandler, afterHandler);
             return;
+        }
+
+        let existingBound = this.ExtractExisting_(target);
+        if (existingBound){
+            existingBound.cancel(false);
         }
 
         if (typeof target !== 'function'){
@@ -134,7 +131,7 @@ export class ParsedAnimation implements IParsedAnimation{
         this.afterHandlers_.forEach(handler => bound.addAfterHandler(handler));
 
         this.bounds_.push(bound);
-        bound.run();
+        bound.run(show, this.IsNoAnimation_(show));
     }
 
     public Cancel(target?: AnimationTargetType): void{

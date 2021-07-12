@@ -1,3 +1,4 @@
+import { IAnimationEase } from "../../typedefs";
 import { AnimationActor } from "./generic";
 export declare enum ScaleDirection {
     In = 0,
@@ -28,5 +29,6 @@ export declare class ScaleAnimationActor extends AnimationActor {
     protected orientation_: ScaleOrientation;
     protected origin_: ScaleOrigin;
     protected scale_: number;
-    constructor(key: string, direction_: ScaleDirection, orientation_: ScaleOrientation, origin_?: ScaleOrigin, scale_?: number);
+    protected computedOrigin_: string;
+    constructor(key: string, direction_: ScaleDirection, orientation_: ScaleOrientation, origin_?: ScaleOrigin, scale_?: number, preferredEase?: ((show?: boolean) => IAnimationEase) | IAnimationEase, preferredDuration?: ((show?: boolean) => number) | number);
 }

@@ -9,6 +9,8 @@ export interface ParsedElementAnimationOptions {
     eases: Array<IAnimationEase>;
     durations: Array<number>;
     target?: AnimationTargetType;
+    infinite?: boolean;
+    interval?: number;
 }
 export declare class ParsedAnimation implements IParsedAnimation {
     private mode_;

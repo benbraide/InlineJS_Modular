@@ -1,4 +1,16 @@
-import { IRegion, IElementScope, IState, IProxy, IChanges, IChangeRefInfo, IEvaluator, IProcessor, IConfig, IDatabase, IDirectiveManager, IGlobalManager, IOutsideEventManager, IIntersectionObserverManager, IAlertHandler, IRootElement, IParsedAnimation, IAnimationParser, AnimationTargetType, IResizeObserver } from './typedefs';
+import { IRegion, IElementScope, IState, IProxy, IChanges, IChangeRefInfo, IEvaluator, IProcessor, IConfig, IDatabase, IDirectiveManager, IGlobalManager, IOutsideEventManager, IIntersectionObserverManager, IAlertHandler, IRootElement, AnimationBindInfo, IParsedAnimation, IAnimationParser, AnimationTargetType, IResizeObserver } from './typedefs';
+export declare class NoAnimation implements IParsedAnimation {
+    private beforeHandlers_;
+    private afterHandlers_;
+    Run(show: boolean, target?: AnimationTargetType, afterHandler?: (isCanceled?: boolean, show?: boolean) => void, beforeHandler?: (show?: boolean) => void): void;
+    Cancel(): void;
+    Bind(target?: AnimationTargetType): AnimationBindInfo;
+    BindOne(show: boolean, target?: AnimationTargetType): AnimationBindInfo;
+    AddBeforeHandler(handler: () => void): void;
+    RemoveBeforeHandler(handler: () => void): void;
+    AddAfterHandler(handler: (isCanceled?: boolean) => void): void;
+    RemoveAfterHandler(handler: (isCanceled?: boolean) => void): void;
+}
 export declare class Region implements IRegion {
     private rootElement_;
     private static components_;
@@ -72,7 +84,7 @@ export declare class Region implements IRegion {
     GetAlertHandler(): IAlertHandler;
     Alert(data: any): boolean | void;
     ParseAnimation(options: Array<string>, target?: AnimationTargetType, parse?: boolean): IParsedAnimation;
-    GetRootProxy(): IProxy;
+    GetRootProxy(): any;
     FindProxy(path: string): IProxy;
     AddProxy(proxy: IProxy): void;
     RemoveProxy(path: string): void;

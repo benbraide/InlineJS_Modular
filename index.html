@@ -144,6 +144,51 @@
             </template>
         </ul>
     </div>
+    <div x-component="animate" x-data="{ show: false, showSide: false, animating: false, count: 999 }">
+        <h2 x-style:color="color" x-on:click="color = 'red'">Animate Component</h2>
+        <label style="display: inline-block;" x-animate.spin-top-left.45.slow="showSide"><input type="checkbox" x-model.out="show"> Toggle form</label>
+        <label style="display: inline-block;" x-animat.pulse.sine-in-out.slower="showSide"><input type="checkbox" x-model.oneway="showSide"> Toggle Side</label>
+        <button type="button" x-busy-view="showSide" x-init="$busyView.dots.forEach(dot => dot.style.backgroundColor = 'cyan')" x-on:click="count += 100">Do Something</button>
+        <span style="display: inline-block; font-size: 2rem; font-weight: 900;" x-show:animate.zoom.spin.collect.180.faster="showSide" x-bind="animating = $animation.active">+</span>
+        <span style="display: inline-block; font-size: 2rem; font-weight: 900;" x-show="$and(!animating, !showSide)" x-on:click="console.log('clicked')">-</span>
+        <div style="position: relative;">
+            <div style="top: 0; left: 0; overflow: hidden; width: 100%;" x-style:position="!show ? 'absolute' : 'static'" x-cloak="hide" x-show:animate.height.bounce="show">
+                <div style="padding: 10px 5px; border: 1px solid gray;">
+                    <div>
+                        <span>Name: </span>
+                        <input type="text">
+                    </div>
+                    <div>
+                        <span>Email: </span>
+                        <input type="email">
+                    </div>
+                    <div>
+                        <span>Password: </span>
+                        <input type="password">
+                    </div>
+                </div>
+            </div>
+            <div style="top: 0; left: 0; overflow: hidden; width: 100%;" x-style:position="show ? 'absolute' : 'static'" x-cloak="hide" x-show:animate.height-reverse.bounce="!show">
+                <div style="padding: 10px 5px; border: 1px solid gray;">
+                    <div>
+                        <span>Name: </span>
+                        <input type="text">
+                    </div>
+                    <div>
+                        <span>Email: </span>
+                        <input type="email">
+                    </div>
+                    <div>
+                        <span>Password: </span>
+                        <input type="password">
+                    </div>
+                </div>
+            </div>
+            <span x-text:animate.7s.lazy="{ show: show, showSide: showSide, animating: animating, count: count }"></span>
+        </div>
+
+        <div style="height: 100vh; width: 500px; background-color: gray; position: fixed; right: 0; top: 0;" x-cloak="hide" x-animate.zoom-out.200.faster="showSide"></div>
+    </div>
     <script src="/dist/inlinejs-extended.js"></script>
     <script>
         function typewriterList(){

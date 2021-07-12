@@ -114,7 +114,7 @@ export class ImageDirectiveHandler extends ExtendedDirectiveHandler{
                         
                         let myRegion = Region.Get(regionId);
                         if (myRegion){
-                            region.GetIntersectionObserverManager().RemoveByKey(key);
+                            myRegion.GetIntersectionObserverManager().RemoveByKey(key);
                         }
                     });
                 }

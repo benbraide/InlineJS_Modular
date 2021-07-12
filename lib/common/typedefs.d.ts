@@ -259,12 +259,12 @@ export interface IAnimationActor {
 export declare type AnimationHandlerType = (fraction: number, actors?: Array<IAnimationActor>) => void;
 export declare type AnimationTargetType = HTMLElement | AnimationHandlerType;
 export interface AnimationBindInfo {
-    run: () => void;
+    run: (data?: any, endOnly?: boolean) => void;
     cancel: (graceful?: boolean) => void;
-    addBeforeHandler: (handler: () => void) => void;
-    removeBeforeHandler: (handler: () => void) => void;
-    addAfterHandler: (handler: (isCanceled?: boolean) => void) => void;
-    removeAfterHandler: (handler: (isCanceled?: boolean) => void) => void;
+    addBeforeHandler: (handler: (data?: any) => void) => void;
+    removeBeforeHandler: (handler: (data?: any) => void) => void;
+    addAfterHandler: (handler: (isCanceled?: boolean, data?: any) => void) => void;
+    removeAfterHandler: (handler: (isCanceled?: boolean) => void, data?: any) => void;
     getTarget: () => AnimationTargetType;
 }
 export interface IAnimation {
@@ -279,10 +279,24 @@ export interface IParsedAnimation extends IAnimation {
     AddAfterHandler(handler: (isCanceled?: boolean) => void): void;
     RemoveAfterHandler(handler: (isCanceled?: boolean) => void): void;
 }
+export interface IParsedCreatorReturn<T> {
+    object: T;
+    count: number;
+}
+export interface IParsedCreator<T> {
+    GetKey(): string;
+    Create(options: Array<string>, index?: number, target?: AnimationTargetType): IParsedCreatorReturn<T>;
+}
 export interface IAnimationParser {
+    AddEaseCreator(creator: IParsedCreator<IAnimationEase>): void;
+    RemoveEaseCreator(key: string): void;
+    GetEaseCreator(key: string): IParsedCreator<IAnimationEase>;
     AddEase(ease: IAnimationEase): void;
     RemoveEase(key: string): void;
     GetEase(key: string): IAnimationEase;
+    AddActorCreator(creator: IParsedCreator<IAnimationActor>): void;
+    RemoveActorCreator(key: string): void;
+    GetActorCreator(key: string): IParsedCreator<IAnimationActor>;
     AddActor(actor: IAnimationActor): void;
     RemoveActor(key: string): void;
     GetActor(key: string): IAnimationActor;

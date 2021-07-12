@@ -1,55 +1,55 @@
 import { ScaleAnimationActor } from "./scale";
-export declare class Width extends ScaleAnimationActor {
+export declare class WidthAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class WidthReverse extends ScaleAnimationActor {
+export declare class WidthReverseAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class WidthIn extends ScaleAnimationActor {
+export declare class WidthInAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class WidthInReverse extends ScaleAnimationActor {
+export declare class WidthInReverseAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class WidthOut extends ScaleAnimationActor {
+export declare class WidthOutAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class WidthOutReverse extends ScaleAnimationActor {
+export declare class WidthOutReverseAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class Height extends ScaleAnimationActor {
+export declare class HeightAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class HeightReverse extends ScaleAnimationActor {
+export declare class HeightReverseAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class HeightIn extends ScaleAnimationActor {
+export declare class HeightInAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class HeightInReverse extends ScaleAnimationActor {
+export declare class HeightInReverseAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class HeightOut extends ScaleAnimationActor {
+export declare class HeightOutAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class HeightOutReverse extends ScaleAnimationActor {
+export declare class HeightOutReverseAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class WidthHeight extends ScaleAnimationActor {
+export declare class WidthHeightAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class WidthHeightReverse extends ScaleAnimationActor {
+export declare class WidthHeightReverseAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class WidthHeightIn extends ScaleAnimationActor {
+export declare class WidthHeightInAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class WidthHeightInReverse extends ScaleAnimationActor {
+export declare class WidthHeightInReverseAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class WidthHeightOut extends ScaleAnimationActor {
+export declare class WidthHeightOutAnimationActor extends ScaleAnimationActor {
     constructor();
 }
-export declare class WidthHeightOutReverse extends ScaleAnimationActor {
+export declare class WidthHeightOutReverseAnimationActor extends ScaleAnimationActor {
     constructor();
 }

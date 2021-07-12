@@ -1,5 +1,9 @@
+import { BackEase } from "../easing/back";
+import { DefaultEase } from "../easing/default";
 import { ScaleAnimationActor, ScaleDirection, ScaleOrientation, ScaleOrigin } from "./scale";
 export declare class GenericZoomAnimationActor extends ScaleAnimationActor {
+    protected static backEase_: BackEase;
+    protected static defaultEase_: DefaultEase;
     constructor(key: string, direction: ScaleDirection, orientation: ScaleOrientation, origin?: ScaleOrigin, scale?: number);
     SetScale(scale: number): void;
 }

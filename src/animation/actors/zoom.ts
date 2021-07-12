@@ -1,8 +1,13 @@
+import { BackEase } from "../easing/back";
+import { DefaultEase } from "../easing/default";
 import { ScaleAnimationActor, ScaleDirection, ScaleOrientation, ScaleOrigin } from "./scale";
 
 export class GenericZoomAnimationActor extends ScaleAnimationActor{
+    protected static backEase_ = new BackEase();
+    protected static defaultEase_ = new DefaultEase();
+    
     public constructor(key: string, direction: ScaleDirection, orientation: ScaleOrientation, origin = ScaleOrigin.Nil, scale = 1){
-        super(key, direction, orientation, origin, scale);
+        super(key, direction, orientation, origin, scale, (show) => (show ? GenericZoomAnimationActor.backEase_ : GenericZoomAnimationActor.defaultEase_));
     }
 
     public SetScale(scale: number){

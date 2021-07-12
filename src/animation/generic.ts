@@ -9,8 +9,10 @@ interface AnimationBindInternal{
     interval: number;
     startTimestamp: DOMHighResTimeStamp;
     isActive: boolean;
-    beforeHandlers: Array<() => void>;
-    afterHandlers: Array<(isCanceled?: boolean) => void>;
+    checkpoint: number;
+    beforeHandlers: Array<(data?: any) => void>;
+    afterHandlers: Array<(isCanceled?: boolean, data?: any) => void>;
+    data?: any;
 }
 
 export class Animation implements IAnimation{
@@ -30,12 +32,34 @@ export class Animation implements IAnimation{
             interval: (this.interval_ || 0),
             startTimestamp: null,
             isActive: false,
+            checkpoint: 0,
             beforeHandlers: new Array<() => void>(),
             afterHandlers: new Array<(isCanceled?: boolean) => void>(),
+            data: null,
         };
 
-        let pass = (timestamp: DOMHighResTimeStamp) => {
-            if (!info.isActive){
+        let callBeforeHandlers = () => {
+            info.beforeHandlers.forEach((handler) => {
+                try{
+                    handler(info.data);
+                }
+                catch{}
+            });
+        };
+        
+        let callAfterHandlers = (canceled: boolean) => {
+            info.afterHandlers.forEach((handler) => {
+                try{
+                    handler(canceled, info.data);
+                }
+                catch{}
+            });
+        };
+
+        let bindPass = (checkpoint: number) => pass.bind(null, checkpoint);
+
+        let pass = (checkpoint: number, timestamp: DOMHighResTimeStamp) => {
+            if (!info.isActive || checkpoint != info.checkpoint){
                 return;
             }
             
@@ -75,21 +99,15 @@ export class Animation implements IAnimation{
                     catch{};
                 }
                 
-                requestAnimationFrame(pass);//Request next frame
+                requestAnimationFrame(bindPass(checkpoint));//Request next frame
             }
             else{//Step to final frame
-                end();
+                end(false, checkpoint);
             }
         };
 
-        let end = (canceled = false) => {
-            if (!info.isActive){
-                return;
-            }
-
-            info.startTimestamp = null;
+        let runEnd = (canceled = false) => {
             let fraction = info.ease.Run(info.duration, info.duration);
-            
             if (info.target && info.target instanceof HTMLElement){
                 info.actors.forEach((actor) => {
                     try{
@@ -105,43 +123,54 @@ export class Animation implements IAnimation{
                 catch{};
             }
 
-            if (canceled || !info.isInfinite){
-                info.isActive = false;
-                info.afterHandlers.forEach((handler) => {
-                    try{
-                        handler(canceled);
-                    }
-                    catch{}
-                });
+            callAfterHandlers(canceled);
+            info.isActive = false;
+        };
+
+        let end = (canceled = false, checkpoint?: number) => {
+            if (!info.isActive || ((checkpoint || checkpoint === 0) && checkpoint != info.checkpoint)){
+                return;
             }
-            else{//Schedule next run with the specified interval
+
+            info.startTimestamp = null;
+            runEnd(canceled);
+
+            if (!canceled && info.isInfinite && (checkpoint || checkpoint === 0)){//Schedule next run with the specified interval
+                info.isActive = true;
                 setTimeout(() => {
-                    requestAnimationFrame(pass);
+                    if (info.isActive){
+                        checkpoint = ++info.checkpoint;
+                        callBeforeHandlers();
+                        requestAnimationFrame(bindPass(checkpoint));
+                    }
                 }, info.interval);
             }
         };
 
         return {
-            run: () => {
+            run: (data?: any, endOnly = false) => {
                 if (info.isActive){
                     return;
                 }
-                
+
                 info.isActive = true;
-                info.beforeHandlers.forEach((handler) => {
-                    try{
-                        handler();
-                    }
-                    catch{}
-                });
+                info.data = data;
                 
+                callBeforeHandlers();
+                if (endOnly){
+                    runEnd();
+                    return;
+                }
+
+                let checkpoint = ++info.checkpoint;
                 setTimeout(() => {//Watcher - required if 'requestAnimationFrame' doesn't run
-                    end();
+                    end(false, checkpoint);
                 }, (info.duration + 72));
         
-                requestAnimationFrame(pass);
+                requestAnimationFrame(bindPass(checkpoint));
             },
             cancel: (graceful = true) => {
+                ++info.checkpoint;
                 if (!graceful){
                     info.isActive = false;
                     info.startTimestamp = null;
@@ -150,16 +179,16 @@ export class Animation implements IAnimation{
                     end(true);
                 }
             },
-            addBeforeHandler: (handler: () => void) => {
+            addBeforeHandler: (handler: (data?: any) => void) => {
                 info.beforeHandlers.push(handler);
             },
-            removeBeforeHandler: (handler: () => void) => {
+            removeBeforeHandler: (handler: (data?: any) => void) => {
                 info.beforeHandlers.splice(info.beforeHandlers.findIndex(item => (item === handler)));
             },
-            addAfterHandler: (handler: (isCanceled?: boolean) => void) => {
+            addAfterHandler: (handler: (isCanceled?: boolean, data?: any) => void) => {
                 info.afterHandlers.push(handler);
             },
-            removeAfterHandler: (handler: (isCanceled?: boolean) => void) => {
+            removeAfterHandler: (handler: (isCanceled?: boolean, data?: any) => void) => {
                 info.afterHandlers.splice(info.afterHandlers.findIndex(item => (item === handler)));
             },
             getTarget: () => info.target,
