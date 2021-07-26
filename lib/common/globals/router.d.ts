@@ -36,6 +36,11 @@ export declare class LinkDirectiveHandler extends ExtendedDirectiveHandler {
     private router_;
     constructor(router_: RouterGlobalHandler);
 }
+export declare class NavDirectiveHandler extends ExtendedDirectiveHandler {
+    private router_;
+    private link_;
+    constructor(router_: RouterGlobalHandler);
+}
 export declare class BackDirectiveHandler extends ExtendedDirectiveHandler {
     private router_;
     constructor(router_: RouterGlobalHandler);
@@ -45,8 +50,7 @@ interface MountInfo {
     type?: string;
     element?: HTMLElement;
     proxy?: any;
-    fetch?: (url: string) => void;
-    notFound?: (url: string) => void;
+    fetch?: (url: string, callback: (state?: boolean) => void) => void;
 }
 export declare class MountDirectiveHandler extends ExtendedDirectiveHandler {
     private router_;
@@ -64,11 +68,14 @@ export declare class RouterGlobalHandler extends GlobalHandler implements IRoute
     private origin_;
     private url_;
     private onLoadHandlers_;
+    private active_;
+    private entryCallbacks_;
     private lastPageId_;
     private pages_;
     private activePage_;
     private currentUrl_;
     private currentQuery_;
+    private currentTitle_;
     constructor(middlewares_?: IMiddleware[], ajaxPrefix_?: string, mountElementType?: string);
     Register(page: PageOptions): number;
     Unregister(id: number): void;
@@ -84,6 +91,7 @@ export declare class RouterGlobalHandler extends GlobalHandler implements IRoute
     BuildUrl(path: PathInfo, absolute?: boolean, process?: boolean, includeAjaxPrefix?: boolean): string;
     BuildPath(url: string): PathInfo;
     BuildQuery(query: string, shouldDecode?: boolean): Record<string, Array<string> | string>;
+    private SetActiveState_;
     private Load_;
     private FindPage_;
 }

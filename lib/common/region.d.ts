@@ -84,7 +84,7 @@ export declare class Region implements IRegion {
     GetAlertHandler(): IAlertHandler;
     Alert(data: any): boolean | void;
     ParseAnimation(options: Array<string>, target?: AnimationTargetType, parse?: boolean): IParsedAnimation;
-    GetRootProxy(): any;
+    GetRootProxy(): IProxy;
     FindProxy(path: string): IProxy;
     AddProxy(proxy: IProxy): void;
     RemoveProxy(path: string): void;

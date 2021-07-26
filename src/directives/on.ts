@@ -180,7 +180,19 @@ export class OnDirectiveHandler extends DirectiveHandler{
                 let scope = region.AddElement(element, true);
                 if (scope){//Add local directive
                     scope.directiveManager = (scope.directiveManager || new DirectiveManager(true));
-                    scope.directiveManager.AddHandler(new DirectiveHandler('outsideEventExcept', (innerRegion: IRegion, innerElement: HTMLElement, innerDirective: IDirective) => {
+                    scope.directiveManager.AddHandler(new DirectiveHandler('outside.event.except', (innerRegion: IRegion, innerElement: HTMLElement, innerDirective: IDirective) => {
+                        let data = DirectiveHandler.Evaluate(innerRegion, innerElement, innerDirective.value), map = {};
+                        
+                        map[event] = data;
+                        if (mappedEvent){
+                            map[mappedEvent] = data;
+                        }
+                        
+                        innerRegion.GetOutsideEventManager().AddExcept(innerElement, map, onEvent);
+                        return DirectiveHandlerReturn.Handled;
+                    }, false));
+
+                    scope.directiveManager.AddHandler(new DirectiveHandler('outside.event.except.map', (innerRegion: IRegion, innerElement: HTMLElement, innerDirective: IDirective) => {
                         innerRegion.GetOutsideEventManager().AddExcept(innerElement, DirectiveHandler.Evaluate(innerRegion, innerElement, innerDirective.value), onEvent);
                         return DirectiveHandlerReturn.Handled;
                     }, false));

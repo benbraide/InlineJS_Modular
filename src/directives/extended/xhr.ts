@@ -244,6 +244,17 @@ export class JSONDirectiveHandler extends ExtendedDirectiveHandler{
                 return response;
             }
 
+            let options = {
+                array: false,
+                number: false,
+            };
+
+            directive.arg.options.forEach((option) => {
+                if (option in options){
+                    options[option] = true;
+                }
+            });
+            
             XHRHelper.BindFetch({
                 region: region,
                 key: this.key_,
@@ -252,7 +263,19 @@ export class JSONDirectiveHandler extends ExtendedDirectiveHandler{
                 fetchMode: XHRHelper.ExtractFetchMode(directive.arg.options),
                 formatData: (data, mode) => {
                     if (!data){
+                        if (options.array){
+                            return [];
+                        }
+
+                        if (options.number){
+                            return 0;
+                        }
+
                         return ((mode === FetchMode.Replace) ? {} : []);
+                    }
+
+                    if (options.number){
+                        return (parseFloat(data) || 0);
                     }
                     
                     try{
@@ -284,7 +307,7 @@ export class JSONDirectiveHandler extends ExtendedDirectiveHandler{
                         }
                     }
                     else{//Replace
-                        state.data = (Array.isArray(value) ? value : [value]);
+                        state.data = value;
                     }
 
                     return true;

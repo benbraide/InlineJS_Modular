@@ -19,3 +19,18 @@ export declare class SlideDownAnimationActorCreator extends GenericSlideAnimatio
 export declare class SlideLeftAnimationActorCreator extends GenericSlideAnimationActorCreator<TranslateAnimationActor> {
     constructor();
 }
+export declare class SlideReverseAnimationActorCreator extends GenericSlideAnimationActorCreator<TranslateAnimationActor> {
+    constructor();
+}
+export declare class SlideUpReverseAnimationActorCreator extends GenericSlideAnimationActorCreator<TranslateAnimationActor> {
+    constructor();
+}
+export declare class SlideRightReverseAnimationActorCreator extends GenericSlideAnimationActorCreator<TranslateAnimationActor> {
+    constructor();
+}
+export declare class SlideDownReverseAnimationActorCreator extends GenericSlideAnimationActorCreator<TranslateAnimationActor> {
+    constructor();
+}
+export declare class SlideLeftReverseAnimationActorCreator extends GenericSlideAnimationActorCreator<TranslateAnimationActor> {
+    constructor();
+}

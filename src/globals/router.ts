@@ -40,25 +40,12 @@ export class RouterDirectiveHandler extends ExtendedDirectiveHandler{
                 return DirectiveHandlerReturn.Handled;
             }
 
-            directive.arg.key = Region.GetProcessor().GetCamelCaseDirectiveName(directive.arg.key);
-            if (directive.arg.key === 'breakpoint'){
-                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.breakpoint`);
+            if (directive.arg.key === 'load' || ExtendedDirectiveHandler.IsEventRequest(directive.arg.key)){
+                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.load`);
             }
 
-            if (directive.arg.key === 'checkpoint'){
-                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.checkpoint`);
-            }
-
-            if (directive.arg.key === 'direction' || directive.arg.key === 'scrollDirection'){
-                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.direction`);
-            }
-
-            if (directive.arg.key === 'directionOffset' || directive.arg.key === 'scrollDirectionOffset'){
-                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.direction.offset`);
-            }
-
-            if (directive.arg.key === 'percentage' || directive.arg.key === 'scrollPercentage'){
-                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.percentage`);
+            if (directive.arg.key === 'reload'){
+                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.reload`);
             }
 
             return DirectiveHandlerReturn.Handled;
@@ -125,15 +112,9 @@ export class LinkDirectiveHandler extends ExtendedDirectiveHandler{
                 return DirectiveHandlerReturn.Handled;
             }
             
-            let path = '', extractedPath: PathInfo = null, routerPath = this.router_.GetActivePage();
-            region.GetState().TrapGetAccess(() => {
-                let data = ExtendedDirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value);
-                path = ((typeof data === 'string') ? this.router_.ProcessUrl(data.trim()) : '');
-                extractedPath = extractPathInfo();
-                updateActive();
-            }, true, element);
+            let path = '', extractedPath: PathInfo = null, routerPath = this.router_.GetActivePage(), regionId = region.GetId();
+            let active = (extractedPath && routerPath && extractedPath.base === routerPath.base), scopeId = this.GenerateScopeId_(region);
 
-            let active = (extractedPath && routerPath && extractedPath.base === routerPath.base), regionId = region.GetId(), scopeId = this.GenerateScopeId_(region);
             let getPathFromElement = () => {
                 if (element instanceof HTMLAnchorElement){
                     return this.router_.ProcessUrl(element.href);
@@ -211,13 +192,26 @@ export class LinkDirectiveHandler extends ExtendedDirectiveHandler{
                 };
             };
 
+            region.GetState().TrapGetAccess(() => {
+                let data = ExtendedDirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value);
+                path = ((typeof data === 'string') ? this.router_.ProcessUrl(data.trim()) : '');
+                extractedPath = extractPathInfo();
+                updateActive();
+            }, true, element);
+            
             let bindInfo = bindEvent();
             afterEvent = bindInfo.after;
 
-            this.router_.BindOnLoad(onLoad);
+            let checkActive = directive.arg.options.includes('active');
+            if (checkActive){
+                this.router_.BindOnLoad(onLoad);
+            }
+
             elementScope.uninitCallbacks.push(() => {
-                this.router_.UnbindOnLoad(onLoad);
                 bindInfo.undo();
+                if (checkActive){
+                    this.router_.UnbindOnLoad(onLoad);
+                }
             });
 
             elementScope.locals['$link'] = Region.CreateProxy((prop) => {
@@ -229,6 +223,20 @@ export class LinkDirectiveHandler extends ExtendedDirectiveHandler{
             
             return DirectiveHandlerReturn.Handled;
         });
+    }
+}
+
+export class NavDirectiveHandler extends ExtendedDirectiveHandler{
+    private link_: LinkDirectiveHandler;
+    
+    public constructor(private router_: RouterGlobalHandler){
+        super(`${router_.GetKey()}.nav`, (region: IRegion, element: HTMLElement, directive: IDirective) => {
+            element.querySelectorAll('a').forEach(item => this.link_.Handle(region, item, directive));
+            element.querySelectorAll('form').forEach(item => this.link_.Handle(region, item, directive));
+            return DirectiveHandlerReturn.Handled;
+        });
+
+        this.link_ = new LinkDirectiveHandler(this.router_);
     }
 }
 
@@ -249,8 +257,7 @@ interface MountInfo{
     type?: string;
     element?: HTMLElement;
     proxy?: any;
-    fetch?: (url: string) => void;
-    notFound?: (url: string) => void;
+    fetch?: (url: string, callback: (state?: boolean) => void) => void;
 }
 
 export class MountDirectiveHandler extends ExtendedDirectiveHandler{
@@ -270,7 +277,9 @@ export class MountDirectiveHandler extends ExtendedDirectiveHandler{
             this.info_.element = document.createElement(this.info_.type || 'div');
             element.parentElement.insertBefore(this.info_.element, element);
 
-            this.info_.fetch = (url) => {
+            let lastCallback: (state?: boolean) => void = null;
+            this.info_.fetch = (url, callback) => {
+                lastCallback = callback;
                 this.fetch_.props.url = url;
                 this.fetch_.Get();
             };
@@ -301,6 +310,9 @@ export class MountDirectiveHandler extends ExtendedDirectiveHandler{
                     (new Bootstrap()).Attach(this.info_.element);
 
                     window.dispatchEvent(new CustomEvent(`${this.key_}.load`));
+                    if (lastCallback){
+                        lastCallback(true);
+                    }
                 },
                 onError: (err) => {
                     setState('active', false);
@@ -309,6 +321,10 @@ export class MountDirectiveHandler extends ExtendedDirectiveHandler{
                     window.dispatchEvent(new CustomEvent(`${this.key_}.error`, {
                         detail: { error: err },
                     }));
+
+                    if (lastCallback){
+                        lastCallback(false);
+                    }
                 },
                 onProgress: (value) => {
                     setState('progress', value);
@@ -347,12 +363,16 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
     private url_: string;
     private onLoadHandlers_ = new Array<OnRouterLoadHandlerType>();
 
+    private active_ = false;
+    private entryCallbacks_ = new Array<(entered?: boolean) => void>();
+    
     private lastPageId_ = 0;
     private pages_ = new Array<PageInfo>();
 
     private activePage_: PageInfo = null;
     private currentUrl_: string = null;
     private currentQuery_: Record<string, Array<string> | string> = null;
+    private currentTitle_ = '';
     
     public constructor(private middlewares_ = new Array<IMiddleware>(), private ajaxPrefix_ = 'ajax', mountElementType = ''){
         super('router', () => this.proxy_, null, null, () => {
@@ -364,6 +384,7 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
             Region.GetDirectiveManager().AddHandler(new RouterDirectiveHandler(this));
             Region.GetDirectiveManager().AddHandler(new RegisterDirectiveHandler(this));
             Region.GetDirectiveManager().AddHandler(new LinkDirectiveHandler(this));
+            Region.GetDirectiveManager().AddHandler(new NavDirectiveHandler(this));
             Region.GetDirectiveManager().AddHandler(new BackDirectiveHandler(this));
             Region.GetDirectiveManager().AddHandler(new MountDirectiveHandler(this, this.mountInfo_));
 
@@ -373,14 +394,19 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
             }, true);
 
             this.proxy_ = Region.CreateProxy((prop) => {
+                if (prop === 'active'){
+                    GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.${prop}`);
+                    return this.active_;
+                }
+                
                 if (prop === 'page'){
                     GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.${prop}`);
                     return (this.activePage_ ? {...this.activePage_} : null);
                 }
 
                 if (prop === 'title'){
-                    GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.page`);
-                    return ((this.activePage_ ? this.activePage_.title : null) || 'Untitled');
+                    GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.${prop}`);
+                    return (this.currentTitle_ || 'Untitled');
                 }
 
                 if (prop === 'url'){
@@ -395,11 +421,28 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
                 if (prop === 'register'){
                     return (page: PageOptions) => this.Register(page);
                 }
-            }, ['page', 'url', 'mount', 'register'], (target, prop, value) => {
-                if (typeof prop === 'string' && prop === 'url'){
-                    this.Goto(value);
+
+                if (prop === 'addOnEntry'){
+                    return (handler: (entered?: boolean) => void) => this.entryCallbacks_.push(handler);
+                }
+
+                if (prop === 'removeOnEntry'){
+                    return (handler: (entered?: boolean) => void) => this.entryCallbacks_.splice(this.entryCallbacks_.findIndex(item => (item === handler)), 1);
+                }
+            }, ['active', 'page', 'title', 'url', 'mount', 'register', 'addOnEntry', 'removeOnEntry'], (target, prop, value) => {
+                if (typeof prop !== 'string'){
                     return true;
                 }
+                
+                if (prop === 'title' && value !== this.currentTitle_){
+                    GlobalHandler.region_.GetChanges().AddComposed('title', this.scopeId_);
+                    this.currentTitle_ = value;
+                }
+                else if (prop === 'url'){
+                    this.Goto(value);
+                }
+
+                return true;
             });
         }, () => {
             this.proxy_ = null;
@@ -407,6 +450,7 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
             
             Region.GetDirectiveManager().RemoveHandlerByKey(`${this.key_}.mount`);
             Region.GetDirectiveManager().RemoveHandlerByKey(`${this.key_}.back`);
+            Region.GetDirectiveManager().RemoveHandlerByKey(`${this.key_}.nav`);
             Region.GetDirectiveManager().RemoveHandlerByKey(`${this.key_}.link`);
             Region.GetDirectiveManager().RemoveHandlerByKey(`${this.key_}.register`);
             Region.GetDirectiveManager().RemoveHandlerByKey(this.key_);
@@ -582,19 +626,49 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
         return formatted;
     }
 
+    private SetActiveState_(state: boolean, callHandlers = true){
+        if (state == this.active_){
+            return;
+        }
+        
+        GlobalHandler.region_.GetChanges().AddComposed('active', this.scopeId_);
+        this.active_ = state;
+
+        if (callHandlers){
+            this.entryCallbacks_.forEach((callback) => {
+                try{
+                    callback(state);
+                }
+                catch{}
+            });
+        }
+    }
+
     private Load_(path: PathInfo, callback?: (url: string, title: string) => void, shouldReload?: boolean | (() => boolean)){
         let page = this.FindPage_(path), processedPath: PathInfo = {
             base: this.ProcessUrl(path.base),
             query: this.ProcessUrl(path.query),
         };
         
+        this.SetActiveState_(true);
         if (!page){//Page not found
-            if (callback){
-                callback(this.BuildUrl(processedPath, true, false), 'Page Not Found');
+            let notFoundText = 'Page Not Found';
+            if (notFoundText !== this.currentTitle_){
+                GlobalHandler.region_.GetChanges().AddComposed('title', this.scopeId_);
+                this.currentTitle_ = notFoundText;
             }
             
-            if (this.mountInfo_.notFound){
-                this.mountInfo_.notFound(processedPath.base);
+            if (callback){
+                callback(this.BuildUrl(processedPath, true, false), notFoundText);
+            }
+            
+            if (this.mountInfo_.fetch){
+                this.mountInfo_.fetch(this.BuildUrl(this.BuildPath('/404'), true, true, true), () => {
+                    this.SetActiveState_(false);
+                });
+            }
+            else{
+                this.SetActiveState_(false);
             }
             
             return;
@@ -603,6 +677,7 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
         for (let i = 0; i < page.middlewares.length; ++i){
             let middleware = page.middlewares[i];
             if (middleware in this.middlewares_ && (this.middlewares_[middleware] as IMiddleware).Handle(path) === false){
+                this.SetActiveState_(false);
                 return;//Rejected
             }
         }
@@ -615,10 +690,11 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
             return ((typeof shouldReload === 'boolean') ? shouldReload : shouldReload());
         };
 
-        let url = this.BuildUrl(processedPath, true, false);
+        let url = this.BuildUrl(processedPath, true, false), isNewUrl = false;
         if (url === this.currentUrl_){
             window.dispatchEvent(new CustomEvent(`${this.key_}.reload`));
             if (!checkShouldReload()){
+                this.SetActiveState_(false);
                 return;//Reload rejected
             }
         }
@@ -626,12 +702,18 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
             GlobalHandler.region_.GetChanges().AddComposed('url', this.scopeId_);
             this.currentUrl_ = url;
             this.currentQuery_ = this.BuildQuery(this.BuildPath(url).query);
+            isNewUrl = true;
         }
 
         let isNewPage = (page !== this.activePage_);
         if (isNewPage){
             GlobalHandler.region_.GetChanges().AddComposed('page', this.scopeId_);
             this.activePage_ = page;
+        }
+
+        if (page.title !== this.currentTitle_){
+            GlobalHandler.region_.GetChanges().AddComposed('title', this.scopeId_);
+            this.currentTitle_ = page.title;
         }
 
         if (callback){
@@ -642,11 +724,15 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
         }
 
         if (this.mountInfo_.fetch){
-            this.mountInfo_.fetch((this.ajaxPrefix_ && this.ajaxPrefix_) ? this.BuildUrl(processedPath, true, true, true) : url);
+            this.mountInfo_.fetch((this.ajaxPrefix_ ? this.BuildUrl(processedPath, true, true, true) : url), () => {
+                this.SetActiveState_(false);
+            });
+        }
+        else{//No mount
+            this.SetActiveState_(false);
         }
 
-        window.dispatchEvent(new CustomEvent(`${this.key_}.load`));
-        if (isNewPage){
+        if (isNewUrl){
             this.onLoadHandlers_.forEach((handler) => {
                 try{
                     handler({
@@ -657,6 +743,8 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
                 catch{}
             });
         }
+        
+        window.dispatchEvent(new CustomEvent(`${this.key_}.load`));
     }
 
     private FindPage_(target: string | PathInfo){

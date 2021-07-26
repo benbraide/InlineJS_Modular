@@ -1,8 +1,11 @@
-import { IDirective, DirectiveHandlerReturn, IRegion, IParsedAnimation } from '../../typedefs'
+import { IDirective, DirectiveHandlerReturn, IRegion } from '../../typedefs'
 import { IntersectionObserver } from '../../observers/intersection'
 import { Fetch } from '../../utilities/fetch'
 import { Region } from '../../region'
 import { ExtendedDirectiveHandler } from './generic'
+import { MultiAnimation } from '../../animation/multi'
+import { ZoomAnimationActor } from '../../animation/actors/zoom'
+import { InvertedEase } from '../../animation/easing/inverted'
 
 export class ImageDirectiveHandler extends ExtendedDirectiveHandler{
     public constructor(){
@@ -23,7 +26,9 @@ export class ImageDirectiveHandler extends ExtendedDirectiveHandler{
                 lazy: false,
                 pop: false,
                 zoom: false,
-                zoomMultiplier: 0,
+                zoomMultiplier: 130,
+                zoomTarget: (element as HTMLElement),
+                ancestor: -1,
             };
 
             let info = {
@@ -42,7 +47,15 @@ export class ImageDirectiveHandler extends ExtendedDirectiveHandler{
                 if (option in options && typeof options[option] === 'boolean'){
                     options[option] = true;
                     if (option === 'zoom' && index < (list.length - 1)){
-                        options.zoomMultiplier = (parseInt(list[index + 1]) || 1300);
+                        options.zoomMultiplier = (parseInt(list[index + 1]) || 130);
+                    }
+                }
+                else if (option === 'ancestor'){
+                    if ((index + 1) < directive.arg.options.length){
+                        options.ancestor = (parseInt(directive.arg.options[index + 1]) || 0);
+                    }
+                    else{//Use parent
+                        options.ancestor = 0;
                     }
                 }
             });
@@ -129,7 +142,7 @@ export class ImageDirectiveHandler extends ExtendedDirectiveHandler{
                 }
             }
 
-            let zoomAnimator: IParsedAnimation = null;
+            let zoomAnimator: MultiAnimation = null, zoomAnimatorActor: ZoomAnimationActor;
             let onZoomAnimationBefore = () => {
                 Region.Get(regionId).GetChanges().AddComposed('zooming', scopeId);
                 info.zooming = true;
@@ -146,27 +159,62 @@ export class ImageDirectiveHandler extends ExtendedDirectiveHandler{
                 info.zooming = false;
                 info.zoomed = show;
             };
+
+            let onZoomStep = (fraction: number) => {
+                zoomAnimatorActor.Step(fraction, element);
+            };
             
-            let onZoomEnter = () => {
-                zoomAnimator.Run(true, null, onZoomAnimationAfter, onZoomAnimationBefore);
+            let onZoomChange = (show: boolean) => {
+                zoomAnimator.SetActive(show ? 'show' : 'hide');
+                let info = zoomAnimator.Bind(onZoomStep);
+                if (info){//Run
+                    info.addBeforeHandler(onZoomAnimationBefore);
+                    info.addAfterHandler(onZoomAnimationAfter);
+                    info.run(show);
+                }
             };
 
+            let onZoomEnter = () => {
+                onZoomChange(true);
+            };
+            
             let onZoomLeave = () => {
-                zoomAnimator.Run(false, null, onZoomAnimationAfter, onZoomAnimationBefore);
+                onZoomChange(false);
+            };
+
+            let createZoomAnimator = () => {
+                zoomAnimator = new MultiAnimation({
+                    show: [zoomAnimatorActor],
+                    hide: [zoomAnimatorActor],
+                }, {
+                    show: zoomAnimatorActor.GetPreferredEase(true),
+                    hide: new InvertedEase(zoomAnimatorActor.GetPreferredEase(false)),
+                }, {
+                    show: 200,
+                    hide: 200,
+                });
             };
 
             let bindZoom = () => {
-                zoomAnimator = Region.ParseAnimation(['zoom', options.zoomMultiplier.toString(), 'faster', ...directive.arg.options], element, (directive.arg.key === 'animate'));
-                element.addEventListener('mouseenter', onZoomEnter);
-                element.addEventListener('mouseleave', onZoomLeave);
+                zoomAnimatorActor = new ZoomAnimationActor();
+                zoomAnimatorActor.SetScale(options.zoomMultiplier / 100);
+
+                createZoomAnimator();
+
+                options.zoomTarget.addEventListener('mouseenter', onZoomEnter);
+                options.zoomTarget.addEventListener('mouseleave', onZoomLeave);
             };
 
             let unbindZoom = () => {
-                element.removeEventListener('mouseleave', onZoomLeave);
-                element.removeEventListener('mouseenter', onZoomEnter);
+                options.zoomTarget.removeEventListener('mouseleave', onZoomLeave);
+                options.zoomTarget.removeEventListener('mouseenter', onZoomEnter);
             };
 
             if (options.zoom){//Zoom in on mouse entry
+                if (options.ancestor != -1){
+                    options.zoomTarget = (region.GetElementAncestor(element, options.ancestor) || element);
+                }
+                
                 bindZoom();
             }
 
@@ -204,7 +252,7 @@ export class ImageDirectiveHandler extends ExtendedDirectiveHandler{
                     Region.Get(regionId).GetChanges().AddComposed(prop, scopeId);
                     
                     if (options.zoom){
-                        zoomAnimator = Region.ParseAnimation(['zoom', options.zoomMultiplier.toString(), 'faster', ...directive.arg.options], element, (directive.arg.key === 'animate'));
+                        createZoomAnimator();
                     }
                 }
                 else if (prop === 'pop' && options.pop != !!value){

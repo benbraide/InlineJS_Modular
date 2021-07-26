@@ -1103,13 +1103,23 @@ export class Region implements IRegion{
 
     public static InsertHtml(target: HTMLElement, value: string, replace = true, append = true, region?: IRegion){
         if (replace){//Remove all child nodes
-            Array.from(target.childNodes).forEach(child => target.removeChild(child));
+            let targetRegion = (region || Region.Infer(target));
+            Array.from(target.childNodes).forEach((child) => {
+                if (child.nodeType === 1){
+                    let myRegion = (targetRegion || Region.Infer(child as HTMLElement));
+                    if (myRegion){
+                        myRegion.RemoveElement(child as HTMLElement);
+                    }
+                }
+
+                target.removeChild(child);
+            });
         }
         
         let tmpl = document.createElement('template');
         tmpl.innerHTML = value;
 
-        let childNodes = [...tmpl.content.childNodes].filter(child => !(child instanceof HTMLScriptElement));
+        let childNodes = [...tmpl.content.childNodes];
         if (replace || append){
             target.append(...childNodes);
         }

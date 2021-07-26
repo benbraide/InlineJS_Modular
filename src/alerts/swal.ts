@@ -6,7 +6,7 @@ import Swal from 'sweetalert2'
 export class SwalAlertHandler implements IAlertHandler{
     public Alert(data: any): void{
         if (Region.IsObject(data)){
-            data['icon'] = (data['icon'] || (data['error'] ? 'error' : (data['code'] || 'success')));
+            data['icon'] = (data['icon'] || (data['error'] ? 'error' : (data['type'] || data['code'] || 'success')));
             data['text'] = (data['text'] || data['message']);
             data['toast'] = (!!data['toast'] || !!data['asToast']);
             data['position'] = (data['position'] || (data['toast'] ? 'top-end' : 'center'));

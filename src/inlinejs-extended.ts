@@ -122,6 +122,12 @@ animationParser.AddActorCreator(new SlideAnimationActorCreators.SlideRightAnimat
 animationParser.AddActorCreator(new SlideAnimationActorCreators.SlideDownAnimationActorCreator());
 animationParser.AddActorCreator(new SlideAnimationActorCreators.SlideLeftAnimationActorCreator());
 
+animationParser.AddActorCreator(new SlideAnimationActorCreators.SlideReverseAnimationActorCreator());
+animationParser.AddActorCreator(new SlideAnimationActorCreators.SlideUpReverseAnimationActorCreator());
+animationParser.AddActorCreator(new SlideAnimationActorCreators.SlideRightReverseAnimationActorCreator());
+animationParser.AddActorCreator(new SlideAnimationActorCreators.SlideDownReverseAnimationActorCreator());
+animationParser.AddActorCreator(new SlideAnimationActorCreators.SlideLeftReverseAnimationActorCreator());
+
 animationParser.AddActorCreator(new SpinAnimationActorCreators.SpinAnimationActorCreator());
 animationParser.AddActorCreator(new SpinAnimationActorCreators.SpinXAnimationActorCreator());
 animationParser.AddActorCreator(new SpinAnimationActorCreators.SpinYAnimationActorCreator());
@@ -270,6 +276,12 @@ animationParser.AddActor(new SlideAnimationActors.SlideUpAnimationActor());
 animationParser.AddActor(new SlideAnimationActors.SlideRightAnimationActor());
 animationParser.AddActor(new SlideAnimationActors.SlideDownAnimationActor());
 animationParser.AddActor(new SlideAnimationActors.SlideLeftAnimationActor());
+
+animationParser.AddActor(new SlideAnimationActors.SlideReverseAnimationActor());
+animationParser.AddActor(new SlideAnimationActors.SlideUpReverseAnimationActor());
+animationParser.AddActor(new SlideAnimationActors.SlideRightReverseAnimationActor());
+animationParser.AddActor(new SlideAnimationActors.SlideDownReverseAnimationActor());
+animationParser.AddActor(new SlideAnimationActors.SlideLeftReverseAnimationActor());
 
 animationParser.AddActor(new SpinAnimationActors.SpinAnimationActor());
 animationParser.AddActor(new SpinAnimationActors.SpinXAnimationActor());

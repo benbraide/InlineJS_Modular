@@ -102,6 +102,7 @@ export class OverlayGlobalHandler extends GlobalHandler{
         this.state_.element.style.width = '0';
         this.state_.element.style.height = '100vh';
         this.state_.element.style.backgroundColor = 'rgba(0, 0, 0, 0.63)';
+        this.state_.element.style.zIndex = this.state_.zIndex.toString();
 
         this.state_.element.addEventListener('click', (e) => {
             this.clickHandlers_.forEach((handler) => {

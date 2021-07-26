@@ -155,7 +155,7 @@ export class Fetch implements IFetch{
             }
         }
         else if (this.handlers_.onLoad){
-            this.Get_(false, this.handlers_.onLoad, this.handlers_.onError);
+            this.Get_(false);
         }
         else{//No load handler
             promise = new Promise<any>((resolve, reject) => {
@@ -206,7 +206,7 @@ export class Fetch implements IFetch{
     }
 
     private Get_(tryJson: boolean, onLoad?: (response: any) => void, onError?: (err?: any) => void){
-        let request = new XMLHttpRequest(), checkpoint = (this.noOverlap_ ? this.overlapCheckpoint_++ : null), onProgress = this.handlers_.onProgress;
+        let request = new XMLHttpRequest(), checkpoint = (this.noOverlap_ ? ++this.overlapCheckpoint_ : null), onProgress = this.handlers_.onProgress;
         if (onProgress){//Bind on progress
             request.addEventListener('progress', (e) => {
                 try{

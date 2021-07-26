@@ -8,10 +8,19 @@ export enum TranslateDirection{
     Left,
 }
 
+export enum TranslateMode{
+    Nil,
+    Reversed,
+}
+
 export class TranslateAnimationActor extends AnimationActor{
-    public constructor(key: string, protected direction_: TranslateDirection, protected displacement_ = 9999,
+    public constructor(key: string, protected direction_: TranslateDirection, protected displacement_ = 9999, protected mode_ = TranslateMode.Nil,
         preferredEase?: ((show?: boolean) => IAnimationEase) | IAnimationEase, preferredDuration?: ((show?: boolean) => number) | number){
         super(key, (fraction, element) => {
+            if (this.mode_ === TranslateMode.Reversed){
+                fraction = (1 - fraction);
+            }
+            
             let displacement = (fraction * ((this.displacement_ <= 0) ? 9999 : this.displacement_)), value = '';
             if (this.direction_ === TranslateDirection.Up){
                 value = `translateY(${-displacement}px)`;
