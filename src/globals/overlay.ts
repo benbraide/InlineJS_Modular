@@ -13,17 +13,17 @@ export class OverlayDirectiveHandler extends ExtendedDirectiveHandler{
 
             if (directive.arg.key === 'click'){
                 let regionId = region.GetId(), onEvent = (e: Event) => {
-                    let myRegion = Region.Get(regionId);
+                    let myRegion = Region.Get(regionId), state = myRegion?.GetState();
                     try{
-                        if (myRegion){
-                            myRegion.GetState().PushEventContext(e);
+                        if (state){
+                            state.PushContext(state.EventContextKey(), e);
                         }
-    
+
                         ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value, false, e);
                     }
                     finally{
-                        if (myRegion){
-                            myRegion.GetState().PopEventContext();
+                        if (state){
+                            state.PopContext(state.EventContextKey());
                         }
                     }
                 };

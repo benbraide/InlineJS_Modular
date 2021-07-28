@@ -2,35 +2,35 @@ import { IState, IRegion, ChangeCallbackType, ITrapInfo, IChange, IBubbledChange
 import { Stack } from './stack'
 
 export class State implements IState{
-    private elementContext_ = new Stack<HTMLElement>();
-    private eventContext_ = new Stack<Event>();
+    private contexts_: Record<string, Stack<any>> = {};
 
     public constructor (private regionId_: string, private regionFinder_: (id: string) => IRegion){}
 
-    public PushElementContext(element: HTMLElement): void{
-        this.elementContext_.Push(element);
+    public PushContext(key: string, value: any): void{
+        let context: Stack<any>;
+        if (!(key in this.contexts_)){
+            context = (this.contexts_[key] = new Stack<any>());
+        }
+        else{
+            context = this.contexts_[key];
+        }
+        
+        context.Push(value);
     }
 
-    public PopElementContext(): HTMLElement{
-        return this.elementContext_.Pop();
+    public PopContext(key: string): void{
+        if (key in this.contexts_){
+            this.contexts_[key].Pop();
+            if (this.contexts_[key].IsEmpty()){
+                delete this.contexts_[key];
+            }
+        }
     }
 
-    public GetElementContext(): HTMLElement{
-        return this.elementContext_.Peek();
+    public GetContext(key: string, noResult = null): any{
+        return ((key in this.contexts_ && !this.contexts_[key].IsEmpty()) ? this.contexts_[key].Peek() : noResult);
     }
-
-    public PushEventContext(Value: Event): void{
-        this.eventContext_.Push(Value);
-    }
-
-    public PopEventContext(): Event{
-        return this.eventContext_.Pop();
-    }
-
-    public GetEventContext(): Event{
-        return this.eventContext_.Peek();
-    }
-
+    
     public TrapGetAccess(callback: ChangeCallbackType, changeCallback: ChangeCallbackType | true, elementContext: HTMLElement | string, staticCallback?: () => void): Record<string, Array<string>>{
         let region = this.regionFinder_(this.regionId_);
         if (!region){
@@ -130,5 +130,21 @@ export class State implements IState{
 
     public Log(value: any, ref?: any): void{
         console.log(value, ref);
+    }
+
+    public ElementContextKey(): string{
+        return State.ElementContextKey();
+    }
+
+    public EventContextKey(): string{
+        return State.EventContextKey();
+    }
+
+    public static ElementContextKey(){
+        return 'self';
+    }
+
+    public static EventContextKey(){
+        return 'event';
     }
 }

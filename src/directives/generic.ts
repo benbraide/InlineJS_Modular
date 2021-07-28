@@ -76,7 +76,7 @@ export class DirectiveHandler implements IDirectiveHandler{
         let evaluator = region.GetEvaluator(), state = region.GetState();
         
         evaluator.GetScopeRegionIds().Push(region.GetId());
-        state.PushElementContext(element);
+        state.PushContext(state.ElementContextKey(), element);
 
         try{
             result = evaluator.Evaluate(region.GetId(), element, expression, useWindow, ignoreRemoved, useBlock);
@@ -90,7 +90,7 @@ export class DirectiveHandler implements IDirectiveHandler{
             state.ReportError(err, `InlineJs.Region<${region.GetId()}>.CoreDirectiveHandlers.Evaluate(${expression})`);
         }
         finally{
-            state.PopElementContext();
+            state.PopContext(state.ElementContextKey());
             evaluator.GetScopeRegionIds().Pop();
         }
         

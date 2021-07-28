@@ -31,12 +31,14 @@ export class Processor implements IProcessor{
             return DirectiveHandlerReturn.Nil;
         }
         
-        region.GetState().PushElementContext(element);
+        let state = region.GetState(), elementContextKey = state.ElementContextKey();
+        state.PushContext(elementContextKey, element);
+
         let result = this.TraverseDirectives(element, (directive: IDirective): DirectiveHandlerReturn => {
             return this.DispatchDirective(region, element, directive);
         });
 
-        region.GetState().PopElementContext();
+        state.PopContext(elementContextKey);
         return result;
     }
 

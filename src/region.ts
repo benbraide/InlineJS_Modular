@@ -175,6 +175,10 @@ export class Region implements IRegion{
         if (window.MutationObserver){
             this.observer_ = new window.MutationObserver((mutations) => {
                 let region = Region.Get(id);
+                if (!region){
+                    return;
+                }
+                
                 mutations.forEach((mutation) => {
                     if (mutation.type === 'childList'){
                         mutation.removedNodes.forEach((node) => {
@@ -267,7 +271,7 @@ export class Region implements IRegion{
     }
 
     public GetElementWith(target: HTMLElement | true, callback: (resolvedTarget: HTMLElement) => boolean): HTMLElement{
-        let resolvedTarget = ((target === true) ? this.state_.GetElementContext() : target);
+        let resolvedTarget = ((target === true) ? this.state_.GetContext(State.ElementContextKey()) : target);
         while (resolvedTarget){
             if (callback(resolvedTarget)){
                 return resolvedTarget;
@@ -284,7 +288,7 @@ export class Region implements IRegion{
     }
 
     public GetElementAncestor(target: HTMLElement | true, index: number): HTMLElement{
-        let resolvedTarget = ((target === true) ? this.state_.GetElementContext() : target);
+        let resolvedTarget = ((target === true) ? this.state_.GetContext(State.ElementContextKey()) : target);
         if (!resolvedTarget || resolvedTarget === this.rootElement_){
             return null;
         }
@@ -303,7 +307,7 @@ export class Region implements IRegion{
             key = element;
         }
         else if (element === true){
-            key = this.state_.GetElementContext().getAttribute(Region.GetElementKeyName());
+            key = this.state_.GetContext(State.ElementContextKey())?.getAttribute(Region.GetElementKeyName());
         }
         else if (!(element instanceof HTMLElement)){
             key = this.rootElement_.getAttribute(Region.GetElementKeyName());
@@ -1103,17 +1107,23 @@ export class Region implements IRegion{
 
     public static InsertHtml(target: HTMLElement, value: string, replace = true, append = true, region?: IRegion){
         if (replace){//Remove all child nodes
-            let targetRegion = (region || Region.Infer(target));
-            Array.from(target.childNodes).forEach((child) => {
-                if (child.nodeType === 1){
-                    let myRegion = (targetRegion || Region.Infer(child as HTMLElement));
-                    if (myRegion){
-                        myRegion.RemoveElement(child as HTMLElement);
+            let targetRegion = (region || Region.Infer(target)), removeOffspring = (node: HTMLElement) => {
+                Array.from(node.childNodes).forEach((child) => {
+                    if (child.nodeType === 1){
+                        let myRegion = (targetRegion || Region.Infer(child as HTMLElement));
+                        if (myRegion){
+                            myRegion.RemoveElement(child as HTMLElement);
+                        }
+                        else{
+                            removeOffspring(child as HTMLElement);
+                        }
                     }
-                }
+                });
+            };
 
-                target.removeChild(child);
-            });
+            removeOffspring(target);
+            Array.from(target.childNodes).forEach(child => target.removeChild(child));
+            Region.ExecutePostProcessCallbacks();
         }
         
         let tmpl = document.createElement('template');

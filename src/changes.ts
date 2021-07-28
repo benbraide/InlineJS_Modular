@@ -109,7 +109,7 @@ export class Changes implements IChanges{
 
         let region = this.currentRegionGetter_(this.regionId_);
         if (region){//Check for a context element
-            let contextElement = region.GetState().GetElementContext();
+            let contextElement = region.GetState().GetContext(region.GetState().ElementContextKey());
             if (contextElement){//Add reference
                 let scope = region.AddElement(contextElement, true);
                 if (scope){

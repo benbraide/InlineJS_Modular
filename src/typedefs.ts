@@ -80,16 +80,15 @@ export interface IChanges{
 }
 
 export interface IState{
-    PushElementContext(element: HTMLElement): void;
-    PopElementContext(): HTMLElement;
-    GetElementContext(): HTMLElement;
-    PushEventContext(Value: Event): void;
-    PopEventContext(): Event;
-    GetEventContext(): Event;
+    PushContext(key: string, value: any): void;
+    PopContext(key: string): void;
+    GetContext(key: string, noResult?: any): any;
     TrapGetAccess(callback: ChangeCallbackType, changeCallback: ChangeCallbackType | true, elementContext: HTMLElement | string, staticCallback?: () => void): Record<string, Array<string>>;
     ReportError(value: any, ref?: any): void;
     Warn(value: any, ref?: any): void;
     Log(value: any, ref?: any): void;
+    ElementContextKey(): string;
+    EventContextKey(): string;
 }
 
 export interface ITrapInfo{

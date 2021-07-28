@@ -20,10 +20,10 @@ export class Evaluator implements IEvaluator{
         }
         
         let result: any;
-        let state = region.GetState();
+        let state = region.GetState(), elementContextKey = state.ElementContextKey();
 
         this.scopeRegionIds_.Push(regionId);
-        state.PushElementContext(region.GetElement(elementContext));
+        state.PushContext(elementContextKey, region.GetElement(elementContext));
 
         try{
             if (useBlock){
@@ -31,26 +31,23 @@ export class Evaluator implements IEvaluator{
                     with (${this.GetContextKey()}){
                         ${expression};
                     };
-                `)).bind(state.GetElementContext())(this.GetProxy(regionId, region.GetRootProxy().GetNativeProxy()));
+                `)).bind(elementContext)(this.GetProxy(regionId, region.GetRootProxy().GetNativeProxy()));
             }
             else{
                 result = (new Function(this.GetContextKey(), `
                     with (${this.GetContextKey()}){
                         return (${expression});
                     };
-                `)).bind(state.GetElementContext())(this.GetProxy(regionId, region.GetRootProxy().GetNativeProxy()));
+                `)).bind(elementContext)(this.GetProxy(regionId, region.GetRootProxy().GetNativeProxy()));
             }
         }
         catch (err){
+            let elementId = (elementContext as HTMLElement).getAttribute(this.elementKeyName_);
+            state.ReportError(err, `InlineJs.Region<${regionId}>.Evaluator.Evaluate(${(elementContext as HTMLElement).tagName}#${elementId}, ${expression})`);
             result = null;
-
-            let element = state.GetElementContext();
-            let elementId = element.getAttribute(this.elementKeyName_);
-            
-            state.ReportError(err, `InlineJs.Region<${regionId}>.Evaluator.Evaluate(${element.tagName}#${elementId}, ${expression})`);
         }
 
-        state.PopElementContext();
+        state.PopContext(elementContextKey);
         this.scopeRegionIds_.Pop();
         
         return result;

@@ -175,7 +175,15 @@ export class RootProxy implements IProxy{
 
                 let stringProp = prop.toString();
                 return ProxyHelper.ProxyGetter(target, stringProp, region, null, name, (region): any => {
-                    let contextElement = region.GetState().GetElementContext();
+                    let state = region.GetState();
+                    if (stringProp.startsWith('$')){
+                        let context = state.GetContext(stringProp.substr(1), new NoResult());
+                        if (!(context instanceof NoResult)){//Context found
+                            return ((context instanceof Value) ? context.Get() : context);
+                        }
+                    }
+                    
+                    let contextElement = region.GetState().GetContext(state.ElementContextKey());
                     let local = region.GetLocal((contextElement || region.GetRootElement()), stringProp);
                     
                     if (!(local instanceof NoResult)){//Local found

@@ -1,12 +1,6 @@
 import { GlobalHandler } from './generic'
 import { Region } from '../region'
 
-export class EventGlobalHandler extends GlobalHandler{
-    public constructor(){
-        super('event', (regionId: string) => Region.Get(regionId).GetState().GetEventContext());
-    }
-}
-
 export class ExpandEventGlobalHandler extends GlobalHandler{
     public constructor(){
         super('expandEvent', (regionId: string) => (event: string, target?: HTMLElement) => Region.Get(regionId).ExpandEvent(event, (target || true)));

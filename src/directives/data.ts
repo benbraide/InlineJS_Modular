@@ -110,14 +110,14 @@ export class DataDirectiveHandler extends DirectiveHandler{
             
             if (data.$init){
                 Region.GetEvaluator().GetScopeRegionIds().Push(region.GetId());
-                region.GetState().PushElementContext(element);
+                region.GetState().PushContext(region.GetState().ElementContextKey(), element);
                 
                 try{
                     data.$init.call(proxy, region);
                 }
                 catch{}
 
-                region.GetState().PopElementContext();
+                region.GetState().PopContext(region.GetState().ElementContextKey());
                 Region.GetEvaluator().GetScopeRegionIds().Pop();
             }
 

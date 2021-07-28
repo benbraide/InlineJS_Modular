@@ -5,9 +5,6 @@ export declare class ProxyGlobalHandler extends GlobalHandler {
 export declare class RefsGlobalHandler extends GlobalHandler {
     constructor();
 }
-export declare class SelfGlobalHandler extends GlobalHandler {
-    constructor();
-}
 export declare class RootGlobalHandler extends GlobalHandler {
     constructor();
 }

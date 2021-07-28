@@ -74,16 +74,17 @@ export class OnDirectiveHandler extends DirectiveHandler{
 
             let regionId = region.GetId();
             let doEvaluation = (myRegion: IRegion, e: Event) => {
+                let state = myRegion?.GetState();
                 try{
-                    if (myRegion){
-                        myRegion.GetState().PushEventContext(e);
+                    if (state){
+                        state.PushContext(state.EventContextKey(), e);
                     }
 
                     DirectiveHandler.BlockEvaluate(myRegion, element, directive.value, false, e);
                 }
                 finally{
-                    if (myRegion){
-                        myRegion.GetState().PopEventContext();
+                    if (state){
+                        state.PopContext(state.EventContextKey());
                     }
                 }
             };
