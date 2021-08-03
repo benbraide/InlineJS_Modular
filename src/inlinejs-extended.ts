@@ -7,6 +7,9 @@ import { WatchDirectiveHandler, WhenDirectiveHandler, OnceDirectiveHandler } fro
 import { ImageDirectiveHandler } from './directives/extended/image'
 import { XHRDirectiveHandler, JSONDirectiveHandler } from './directives/extended/xhr'
 import { FormDirectiveHandler } from './directives/extended/form'
+import { ChangeDirectiveHandler } from './directives/extended/change'
+import { StateDirectiveHandler } from './directives/extended/state'
+import { CounterDirectiveHandler } from './directives/extended/counter'
 
 import { AnimateDirectiveHandler } from './directives/animation/animate'
 import { TypewriterDirectiveHandler } from './directives/animation/typewriter'
@@ -19,6 +22,11 @@ import { OverlayGlobalHandler } from './globals/overlay'
 import { ThemeGlobalHandler } from './globals/theme'
 import { PageGlobalHandler } from './globals/page'
 import { RouterGlobalHandler } from './globals/router'
+import { AuthGlobalHandler } from './globals/auth'
+import { CartGlobalHandler } from './globals/cart'
+import { FavoritesGlobalHandler } from './globals/favorites'
+import { ResourceGlobalHandler } from './globals/resource'
+import { GeolocationGlobalHandler } from './globals/geolocation'
 
 import { AnimationParser } from './animation/parser'
 
@@ -75,6 +83,9 @@ Region.GetDirectiveManager().AddHandler(new XHRDirectiveHandler());
 Region.GetDirectiveManager().AddHandler(new JSONDirectiveHandler());
 
 Region.GetDirectiveManager().AddHandler(new FormDirectiveHandler());
+Region.GetDirectiveManager().AddHandler(new ChangeDirectiveHandler());
+Region.GetDirectiveManager().AddHandler(new StateDirectiveHandler());
+Region.GetDirectiveManager().AddHandler(new CounterDirectiveHandler());
 
 Region.GetDirectiveManager().AddHandler(new AnimateDirectiveHandler());
 Region.GetDirectiveManager().AddHandler(new TypewriterDirectiveHandler());
@@ -90,8 +101,17 @@ Region.GetGlobalManager().AddHandler(new ThemeGlobalHandler());
 
 const routerGlobal = new RouterGlobalHandler();
 
-Region.GetGlobalManager().AddHandler(new PageGlobalHandler(routerGlobal));
 Region.GetGlobalManager().AddHandler(routerGlobal);
+Region.GetGlobalManager().AddHandler(new PageGlobalHandler(routerGlobal));
+
+const authGlobal = new AuthGlobalHandler(routerGlobal, '', false);
+
+Region.GetGlobalManager().AddHandler(authGlobal);
+Region.GetGlobalManager().AddHandler(new CartGlobalHandler(authGlobal));
+Region.GetGlobalManager().AddHandler(new FavoritesGlobalHandler(authGlobal));
+
+Region.GetGlobalManager().AddHandler(new ResourceGlobalHandler());
+Region.GetGlobalManager().AddHandler(new GeolocationGlobalHandler());
 
 const animationParser = new AnimationParser();
 

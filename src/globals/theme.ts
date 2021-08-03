@@ -8,7 +8,6 @@ interface ThemePropInfo{
 
 export class ThemeGlobalHandler extends GlobalHandler{
     private scopeId_: string;
-    private proxy_ = null;
     
     private props_: ThemePropInfo = {
         dark: 'disabled',
@@ -16,7 +15,7 @@ export class ThemeGlobalHandler extends GlobalHandler{
     };
 
     public constructor(private persistent_ = false){
-        super('theme', () => this.proxy_, null, null, () => {
+        super('theme', null, null, () => {
             let setState = (key: string, value: any, after?: () => void) => {
                 if (key in this.props_ && !Region.IsEqual(this.props_[key], value)){
                     this.props_[key] = value;
@@ -58,7 +57,7 @@ export class ThemeGlobalHandler extends GlobalHandler{
                 if (prop === 'persistent'){
                     return this.persistent_;
                 }
-            }, ['dark', 'darkEnabled', 'persistent'], (target, prop, value) => {
+            }, ['dark', 'darkEnabled', 'persistent'], (prop, value) => {
                 if (typeof prop !== 'string'){
                     return true;
                 }
@@ -67,7 +66,7 @@ export class ThemeGlobalHandler extends GlobalHandler{
                     setDarkValue(value);
                 }
                 else if (prop === 'darkMode'){
-                    setState(prop, !!value);
+                    setState(prop, !! value);
                 }
 
                 return true;

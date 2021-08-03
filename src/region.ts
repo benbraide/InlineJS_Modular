@@ -642,6 +642,10 @@ export class Region implements IRegion{
     }
 
     public GetLocal(element: HTMLElement | string, key: string, bubble: boolean = true, useNull = false): any{
+        if (!element){
+            return (useNull ? null : new NoResult());
+        }
+        
         if (typeof element !== 'string'){
             for (let i = 0; i < this.localHandlers_.length; ++i){
                 if (this.localHandlers_[i].element === element){
@@ -1060,7 +1064,7 @@ export class Region implements IRegion{
         return value.toString();
     }
 
-    public static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (target: object, prop: string | number | symbol, value: any) => boolean, target?: any){
+    public static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (prop: string | number | symbol, value: any, target?: object) => boolean, target?: any){
         let hasTarget = !! target;
         let handler = {
             get(target: object, prop: string | number | symbol): any{
@@ -1072,10 +1076,10 @@ export class Region implements IRegion{
             },
             set(target: object, prop: string | number | symbol, value: any){
                 if (hasTarget){
-                    return (setter ? setter(target, prop, value) : Reflect.set(target, prop, value));    
+                    return (setter ? setter(prop, value, target) : Reflect.set(target, prop, value));    
                 }
 
-                return (setter && setter(target, prop, value));
+                return (setter && setter(prop, value, target));
             },
             deleteProperty(target: object, prop: string | number | symbol){
                 return (hasTarget ? Reflect.deleteProperty(target, prop) : false);

@@ -218,12 +218,12 @@ export class ImageDirectiveHandler extends ExtendedDirectiveHandler{
                 bindZoom();
             }
 
-            region.AddElement(element, true).locals['$image'] = ExtendedDirectiveHandler.CreateProxy((prop) =>{
+            region.AddElement(element, true).locals[`\$${this.key_}`] = ExtendedDirectiveHandler.CreateProxy((prop) =>{
                 if (prop in info){
                     Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
                     return info[prop];
                 }
-            }, Object.keys(info), (target, prop, value) => {
+            }, Object.keys(info), (prop, value) => {
                 if (typeof prop !== 'string'){
                     return true;
                 }

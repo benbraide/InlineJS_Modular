@@ -56,7 +56,6 @@ export class ScreenDirectiveHandler extends ExtendedDirectiveHandler{
 
 export class ScreenGlobalHandler extends GlobalHandler{
     private scopeId_: string;
-    private proxy_ = null;
     
     private properties_: ScreenProperties;
     private methods_: ScreenMethods;
@@ -68,7 +67,7 @@ export class ScreenGlobalHandler extends GlobalHandler{
     private scrollEventHandler_: () => void = null;
     
     public constructor(private animator_: any = null, private debounce_ = 250){
-        super('screen', () => this.proxy_, null, null, () => {
+        super('screen', null, null, () => {
             let position = ScreenGlobalHandler.GetScrollPosition(), size = {
                 width: window.innerWidth,
                 height: window.innerHeight,

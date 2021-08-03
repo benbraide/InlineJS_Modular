@@ -18,7 +18,7 @@ export class ResizeObserver implements IResizeObserver{
     private lastKeyCount_ = 0;
 
     public constructor(private regionId_: string){
-        this.observer_ = new globalThis.ResizeObserver((entries, observer) => {
+        this.observer_ = new globalThis.ResizeObserver((entries) => {
             entries.forEach((entry: ResizeObserverEntry) => {
                 Object.entries(this.binds_).forEach(([key, value]) => {
                     if (entry.target === value.element){

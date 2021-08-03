@@ -15,6 +15,7 @@ import { OverlayGlobalHandler } from './globals/overlay'
 import { ThemeGlobalHandler } from './globals/theme'
 import { PageGlobalHandler } from './globals/page'
 import { RouterGlobalHandler } from './globals/router'
+import { ResourceGlobalHandler } from './globals/resource'
 
 import { AnimationParser } from './animation/parser'
 
@@ -42,8 +43,10 @@ Region.GetGlobalManager().AddHandler(new ThemeGlobalHandler());
 
 const routerGlobal = new RouterGlobalHandler();
 
-Region.GetGlobalManager().AddHandler(new PageGlobalHandler(routerGlobal));
 Region.GetGlobalManager().AddHandler(routerGlobal);
+Region.GetGlobalManager().AddHandler(new PageGlobalHandler(routerGlobal));
+
+Region.GetGlobalManager().AddHandler(new ResourceGlobalHandler());
 
 const animationParser = new AnimationParser();
 

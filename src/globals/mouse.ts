@@ -28,9 +28,11 @@ export class MouseGlobalHandler extends ProxiedGlobalHandler{
             }
             
             let listeningInside = false;
-            let scopeId = region.GenerateDirectiveScopeId(null, '_mouse'), inside = false, handlers: Record<string, Array<(event?: Event) => void>> = {};
+            let scopeId = region.GenerateDirectiveScopeId(null, `_${this.key_}`), inside = false, handlers: Record<string, Array<(event?: Event) => void>> = {};
 
-            const events = ['click', 'mousemove', 'mouseenter', 'mouseleave', 'mouseover', 'mouseout', 'mousedown', 'mouseup', 'touchstart', 'touchend', 'touchmove'];
+            const events = ['click', 'dblclick', 'contextmenu', 'mousemove', 'mouseenter', 'mouseleave', 'mouseover', 'mouseout', 'mousedown', 'mouseup'];
+            const touchEvents = ['touchstart', 'touchend', 'touchmove', 'touchcancel'];
+            
             let bind = (key: string, handler: (event?: Event) => void) => {
                 if (!(key in handlers)){
                     handlers[key] = [handler];
@@ -71,7 +73,7 @@ export class MouseGlobalHandler extends ProxiedGlobalHandler{
                     return inside;
                 }
 
-                if (events.includes(prop)){
+                if (events.includes(prop) || touchEvents.includes(prop)){
                     return (callback: (event?: Event) => void, remove = false) => {
                         if (remove){
                             if (prop in handlers){
@@ -93,7 +95,7 @@ export class MouseGlobalHandler extends ProxiedGlobalHandler{
                         return callGlobalMouse(getAncestor(index));
                     };
                 }
-            }, ['inside', 'parent', 'ancestor', ...events], (target, prop, value) => {
+            }, ['inside', 'parent', 'ancestor', ...events, ...touchEvents], (prop, value) => {
                 if (typeof prop === 'string' && events.includes(prop) && typeof value === 'function'){
                     bind(prop, value);
                 }

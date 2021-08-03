@@ -2,10 +2,8 @@ import { GlobalHandler } from "./generic";
 import { Region } from '../region'
 
 export class AlertGlobalHandler extends GlobalHandler{
-    private proxy_ = null;
-    
     public constructor(){
-        super('alert', () => this.proxy_, null, null, () => {
+        super('alert', null, null, () => {
             this.proxy_ = Region.CreateProxy((prop) => {
                 if (prop === 'alert'){
                     return (data: any) => Region.GetAlertHandler().Alert(data);

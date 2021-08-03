@@ -47,7 +47,6 @@ export class OverlayDirectiveHandler extends ExtendedDirectiveHandler{
 
 export class OverlayGlobalHandler extends GlobalHandler{
     private scopeId_: string;
-    private proxy_ = null;
 
     private clickHandlers_ = new Array<(e?: Event) => void>();
     private resizeHandler_: () => void;
@@ -61,13 +60,13 @@ export class OverlayGlobalHandler extends GlobalHandler{
     };
 
     public constructor(private updateBody_ = false, private padBody_ = false){
-        super('overlay', () => this.proxy_, null, null, () => {
+        super('overlay', null, null, () => {
             this.proxy_ = Region.CreateProxy((prop) => {
                 if (prop in this.state_){
                     GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.${prop}`);
                     return this.state_[prop];
                 }
-            }, [...Object.keys(this.state_)], (target, prop, value) => {
+            }, [...Object.keys(this.state_)], (prop, value) => {
                 if (typeof prop !== 'string'){
                     return true;
                 }

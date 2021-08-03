@@ -62,7 +62,7 @@ export class DataDirectiveHandler extends DirectiveHandler{
                     }
                     
                     return myProxy[key][prop];
-                }, ['$parent', '$key'], (target: object, prop: string | number | symbol, value: any) => {
+                }, ['$parent', '$key'], (prop: string | number | symbol, value: any, target: object) => {
                     let myRegion = Region.Get(regionId), myProxy = (myRegion ? myRegion.GetRootProxy().GetNativeProxy() : null);
                     if (!myProxy){
                         return false;

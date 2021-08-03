@@ -480,3 +480,14 @@ export interface IRouterGlobalHandler{
 export interface IPageGlobalHandler{
     SetNextPageData(data: Record<string, any>): void;
 }
+
+export interface IAuthGlobalHandler{
+    Check(): boolean;
+    BuildPath(path: string): string;
+}
+
+export interface IProduct{
+    sku: string;
+    title: string;
+    price: number;
+}

@@ -1,4 +1,4 @@
-import { GlobalHandler } from './generic'
+import { SimpleGlobalHandler } from './generic'
 import { Region } from '../region'
 
 export class WatchHelper{
@@ -27,7 +27,7 @@ export class WatchHelper{
     }
 }
 
-export class WatchGlobalHandler extends GlobalHandler{
+export class WatchGlobalHandler extends SimpleGlobalHandler{
     public constructor(){
         super('watch', (regionId: string, contextElement: HTMLElement) => (expression: string, callback: (value: any) => boolean) => {
             WatchHelper.Watch(regionId, contextElement, expression, value => callback.call(Region.Get(regionId).GetRootProxy().GetNativeProxy(), value), true);
@@ -35,7 +35,7 @@ export class WatchGlobalHandler extends GlobalHandler{
     }
 }
 
-export class WhenGlobalHandler extends GlobalHandler{
+export class WhenGlobalHandler extends SimpleGlobalHandler{
     public constructor(){
         super('when', (regionId: string, contextElement: HTMLElement) => (expression: string, callback: (value: any) => boolean) => {
             WatchHelper.Watch(regionId, contextElement, expression, value => (!value || callback.call(Region.Get(regionId).GetRootProxy().GetNativeProxy(), value)), false);
@@ -43,7 +43,7 @@ export class WhenGlobalHandler extends GlobalHandler{
     }
 }
 
-export class OnceGlobalHandler extends GlobalHandler{
+export class OnceGlobalHandler extends SimpleGlobalHandler{
     public constructor(){
         super('once', (regionId: string, contextElement: HTMLElement) => (expression: string, callback: (value: any) => boolean) => {
             WatchHelper.Watch(regionId, contextElement, expression, value => (!value || (callback.call(Region.Get(regionId).GetRootProxy().GetNativeProxy(), value) && false)), false);

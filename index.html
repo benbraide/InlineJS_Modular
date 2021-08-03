@@ -189,6 +189,76 @@
 
         <div style="height: 100vh; width: 500px; background-color: gray; position: fixed; right: 0; top: 0;" x-cloak="hide" x-animate.zoom-out.200.faster="showSide"></div>
     </div>
+    <div x-component="attr" x-ref="root" x-change:attribute="console.log($changed); name = $changed.name; value = $changed.value" x-data="{name: 'Nil', value: 'Null'}">
+        <h2>Attribute Change</h2>
+        <input type="text" placeholder="Attribute Name" x-model.out="uname">
+        <input type="text" placeholder="Attribute Value" x-model.out="uvalue">
+        <button x-on:click="$parent.setAttribute(uname, uvalue)">Update</button>
+        <div>
+            <span>Name: </span><strong x-text="name"></strong>
+        </div>
+        <div>
+            <span>Value: </span><strong x-text="value"></strong>
+        </div>
+    </div>
+    <div x-data>
+        <h2>State</h2>
+        <input type="email" value="test" required x-state.extended x-init="state = $state">
+        <div>
+            <span>Typing: </span><strong x-text="state.typing"></strong>
+        </div>
+        <div>
+            <span>Dirty: </span><strong x-text="state.dirty"></strong>
+        </div>
+        <div>
+            <span>Valid: </span><strong x-text="state.valid"></strong>
+        </div>
+        <div>
+            <span>Validation Message: </span><strong x-text="state.message"></strong>
+        </div>
+        <div>
+            <span>Same: </span><strong x-text="state.same"></strong>
+        </div>
+    </div>
+    <div x-component="state" x-data>
+        <h2>Group State</h2>
+        <form x-ref="form" x-state.extended.delay.3s>
+            <div>
+                Name: <input type="text" value="Anon User" required x-bind="nameError = $state.self.message">
+                <p x-show:animate="nameError" x-text="nameError"></p>
+            </div>
+            <div>
+                Email: <input type="email" value="anon.user@teep.com" required x-bind="emailError = $state.self.message">
+                <p x-show:animate="emailError" x-text="emailError"></p>
+            </div>
+            <div>
+                <span>Typing: </span><strong x-text="$state.typing"></strong>
+            </div>
+            <div>
+                <span>Global Typing: </span><strong x-text="$$state($refs.form).typing"></strong>
+            </div>
+            <div>
+                <span>Dirty: </span><strong x-text="$state.dirty"></strong>
+            </div>
+            <div>
+                <span>Valid: </span><strong x-text="$state.valid"></strong>
+            </div>
+            <div>
+                <span>Validation Message: </span><strong x-text="$or(nameError, emailError)"></strong>
+            </div>
+            <div>
+                <span>Same: </span><strong x-text="$state.same"></strong>
+            </div>
+            <div>
+                <button type="reset" x-on:click="$nextTick(() => {$state.reset()})">Reset</button>
+                <button class="ml-4 themed" :disabled="!$state.valid">Continue to payment</button>
+            </div>
+        </form>
+    </div>
+    <div x-component="counter" x-data>
+        <h2>Counter</h2>
+        <p x-counter.duration.9s x-text="`Steps (${$counter.running ? 'running' : 'stopped'}): ${$counter.steps}`"></p>
+    </div>
     <script src="/dist/inlinejs-extended.js"></script>
     <script>
         function typewriterList(){

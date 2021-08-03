@@ -3,9 +3,11 @@ import { Region } from '../region'
 
 export class GlobalHandler implements IGlobalHandler{
     protected static region_ = new Region(document.createElement('template'));
+
+    protected proxy_ = null;
     
-    public constructor(protected key_: string, private value_: any, private canHandle_?: (regionId?: string) => boolean,
-        private beforeAdd_?: (manager?: IGlobalManager) => boolean, private afterAdd_?: (manager?: IGlobalManager) => void, private afterRemove_?: (manager?: IGlobalManager) => void){}
+    public constructor(protected key_: string, private canHandle_?: (regionId?: string) => boolean, private beforeAdd_?: (manager?: IGlobalManager) => boolean,
+        private afterAdd_?: (manager?: IGlobalManager) => void, private afterRemove_?: (manager?: IGlobalManager) => void, private value_: any = undefined){}
     
     public GetKey(): string{
         return this.key_;
@@ -32,7 +34,17 @@ export class GlobalHandler implements IGlobalHandler{
     }
 
     public Handle(regionId: string, contextElement: HTMLElement): any{
-        return ((typeof this.value_ === 'function') ? (this.value_ as (regionId?: string, contextElement?: HTMLElement) => any)(regionId, contextElement) : this.value_);
+        if (typeof this.value_ === 'function'){
+            return (this.value_ as (regionId?: string, contextElement?: HTMLElement) => any)(regionId, contextElement);
+        }
+        
+        return ((this.value_ === undefined) ? this.proxy_ : this.value_);
+    }
+}
+
+export class SimpleGlobalHandler extends GlobalHandler{
+    public constructor(key: string, value: any, canHandle?: (regionId?: string) => boolean){
+        super(key, canHandle, null, null, null, value);
     }
 }
 
@@ -46,7 +58,7 @@ export class ProxiedGlobalHandler extends GlobalHandler{
     
     public constructor(key: string, value: any, canHandle?: (regionId?: string) => boolean, beforeAdd?: (manager?: IGlobalManager) => boolean,
         afterAdd?: (manager?: IGlobalManager) => void, afterRemove?: (manager?: IGlobalManager) => void){
-        super(key, value, canHandle, beforeAdd, afterAdd, afterRemove);
+        super(key, canHandle, beforeAdd, afterAdd, afterRemove, value);
     }
 
     protected AddProxy(element: HTMLElement, proxy: any, region?: IRegion){

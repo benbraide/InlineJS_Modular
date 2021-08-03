@@ -86,7 +86,7 @@ export class AnimationParser implements IAnimationParser{
         };
         
         let actors = new Array<IAnimationActor>(), eases = new Array<IAnimationEase>(), durations = new Array<number>();
-        let formattedOptions = options.map(option => option.split('-').join('.')), infinite = false, interval = 0;
+        let formattedOptions = options.map(option => (option.startsWith('-') ? option : option.split('-').join('.'))), infinite = false, interval = 0;
         
         for (let i = 0; i < formattedOptions.length; ++i){
             let option = formattedOptions[i];

@@ -47,7 +47,7 @@ export class DirectiveHandler implements IDirectiveHandler{
         delete this.dataStorage_[key];
     }
 
-    public static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (target: object, prop: string | number | symbol, value: any) => boolean, target?: any){
+    public static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (prop: string | number | symbol, value: any, target?: object) => boolean, target?: any){
         return Region.CreateProxy(getter, contains, setter, target);
     }
 

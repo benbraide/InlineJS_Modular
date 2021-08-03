@@ -354,7 +354,6 @@ export class MountDirectiveHandler extends ExtendedDirectiveHandler{
 
 export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalHandler{
     private scopeId_: string;
-    private proxy_ = null;
     
     private mountInfo_: MountInfo;
     private onEvent_: (e: PopStateEvent) => void;
@@ -375,7 +374,7 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
     private currentTitle_ = '';
     
     public constructor(private middlewares_ = new Array<IMiddleware>(), private ajaxPrefix_ = 'ajax', mountElementType = ''){
-        super('router', () => this.proxy_, null, null, () => {
+        super('router', null, null, () => {
             this.mountInfo_ = {
                 scopeId: this.scopeId_,
                 type: mountElementType,
@@ -429,7 +428,7 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
                 if (prop === 'removeOnEntry'){
                     return (handler: (entered?: boolean) => void) => this.entryCallbacks_.splice(this.entryCallbacks_.findIndex(item => (item === handler)), 1);
                 }
-            }, ['active', 'page', 'title', 'url', 'mount', 'register', 'addOnEntry', 'removeOnEntry'], (target, prop, value) => {
+            }, ['active', 'page', 'title', 'url', 'mount', 'register', 'addOnEntry', 'removeOnEntry'], (prop, value) => {
                 if (typeof prop !== 'string'){
                     return true;
                 }

@@ -27,10 +27,20 @@ export class KeyboardGlobalHandler extends ProxiedGlobalHandler{
                 return proxy;
             }
             
-            let listening = { down: false, up: false }, current: Record<string, string> = { down: '', up: '' };
-            let scopeId = region.GenerateDirectiveScopeId(null, '_keyboard'), handlers: Record<string, Array<(event?: Event) => void>> = {};
+            let listening = {
+                down: false,
+                up: false,
+                inside: false,
+            };
 
-            const events = ['keydown', 'keyup'];
+            let current: Record<string, string> = {
+                down: '',
+                up: '',
+            };
+            
+            const events = ['keydown', 'keyup', 'focus', 'blur', 'focusin', 'focusout'];
+            let scopeId = region.GenerateDirectiveScopeId(null, `_${this.key_}`), inside = false, handlers: Record<string, Array<(event?: Event) => void>> = {};
+
             let bind = (key: string, handler: (event?: Event) => void) => {
                 if (!(key in handlers)){
                     handlers[key] = [handler];
@@ -49,6 +59,28 @@ export class KeyboardGlobalHandler extends ProxiedGlobalHandler{
             };
 
             proxy = Region.CreateProxy((prop) =>{
+                if (prop === 'inside'){
+                    Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
+                    if (!listening.inside){
+                        listening.inside = true;
+                        bind('focus', () => {
+                            if (!inside){
+                                inside = true;
+                                region.GetChanges().AddComposed('inside', scopeId);
+                            }
+                        });
+
+                        bind('blur', () => {
+                            if (inside){
+                                inside = false;
+                                region.GetChanges().AddComposed('inside', scopeId);
+                            }
+                        });
+                    }
+
+                    return inside;
+                }
+                
                 if (prop in listening){
                     Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
                     if (!listening[prop]){
@@ -84,7 +116,7 @@ export class KeyboardGlobalHandler extends ProxiedGlobalHandler{
                         return callGlobalkeyboard(getAncestor(index));
                     };
                 }
-            }, ['inside', 'parent', 'ancestor', ...events], (target, prop, value) => {
+            }, ['inside', 'parent', 'ancestor', ...events], (prop, value) => {
                 if (typeof prop === 'string' && events.includes(prop) && typeof value === 'function'){
                     bind(prop, value);
                 }

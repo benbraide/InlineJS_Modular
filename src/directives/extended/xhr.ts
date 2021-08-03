@@ -147,7 +147,7 @@ export class XHRHelper{
             let elementScope = options.region.AddElement(target, true), lazyUrl: string = null;
             
             fetch.Watch(options.region);
-            elementScope.locals['$xhr'] = fetch.props;
+            elementScope.locals[`\$${options.key}`] = fetch.props;
             
             elementScope.uninitCallbacks.push(() => {
                 fetch.EndWatch();

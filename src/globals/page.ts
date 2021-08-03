@@ -4,7 +4,6 @@ import { Region } from '../region'
 
 export class PageGlobalHandler extends GlobalHandler implements IPageGlobalHandler{
     private scopeId_: string;
-    private proxy_ = null;
     private observer_: MutationObserver = null;
 
     private path_: ExtendedPathInfo = null;
@@ -18,7 +17,7 @@ export class PageGlobalHandler extends GlobalHandler implements IPageGlobalHandl
     private onLoad_: OnRouterLoadHandlerType = null;
     
     public constructor(private router_: IRouterGlobalHandler){
-        super('page', () => this.proxy_, null, null, () => {
+        super('page', null, null, () => {
             this.router_.BindOnLoad(this.onLoad_);
             this.proxy_ = Region.CreateProxy((prop) => {
                 if (prop === 'title'){
@@ -53,7 +52,7 @@ export class PageGlobalHandler extends GlobalHandler implements IPageGlobalHandl
                         }
                     };
                 }
-            }, ['title', 'persistent', 'path', 'data', 'reload', 'refresh'], (target, prop, value) => {
+            }, ['title', 'persistent', 'path', 'data', 'reload', 'refresh'], (prop, value) => {
                 if (typeof prop !== 'string'){
                     return true;
                 }

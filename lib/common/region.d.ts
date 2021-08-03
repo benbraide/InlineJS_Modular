@@ -152,7 +152,7 @@ export declare class Region implements IRegion {
     static IsEqual(first: any, second: any): boolean;
     static DeepCopy(target: any): any;
     static ToString(value: any): string;
-    static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (target: object, prop: string | number | symbol, value: any) => boolean, target?: any): any;
+    static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (prop: string | number | symbol, value: any, target?: object) => boolean, target?: any): any;
     static UnsubscribeAll(list: Array<IChangeRefInfo>): void;
     static InsertHtml(target: HTMLElement, value: string, replace?: boolean, append?: boolean, region?: IRegion): void;
     static GetElementKeyName(): string;
