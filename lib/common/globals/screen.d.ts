@@ -8,7 +8,6 @@ export declare class ScreenGlobalHandler extends GlobalHandler {
     private animator_;
     private debounce_;
     private scopeId_;
-    private proxy_;
     private properties_;
     private methods_;
     private scheduledResize_;

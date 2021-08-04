@@ -147,8 +147,16 @@
     <div x-component="animate" x-data="{ show: false, showSide: false, animating: false, count: 999 }">
         <h2 x-style:color="color" x-on:click="color = 'red'">Animate Component</h2>
         <label style="display: inline-block;" x-animate.spin-top-left.45.slow="showSide"><input type="checkbox" x-model.out="show"> Toggle form</label>
-        <label style="display: inline-block;" x-animat.pulse.sine-in-out.slower="showSide"><input type="checkbox" x-model.oneway="showSide"> Toggle Side</label>
-        <button type="button" x-busy-view="showSide" x-init="$busyView.dots.forEach(dot => dot.style.backgroundColor = 'cyan')" x-on:click="count += 100">Do Something</button>
+        <label style="display: inline-block;" x-animate.pulse.sine-in-out.slower="showSide"><input type="checkbox" x-model.oneway="showSide"> Toggle Side</label>
+        <button type="button" style="position: relative;" x-on:click="count += 100">
+            Do Something
+            <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background-color: rgba(0, 0, 0, 0.36); cursor: wait;"
+                x-cloak="hide" x-show:animate.zoom.ease.faster="showSide" x-animate:inner.infinite.overlap.zoom.150="showSide">
+                <span style="flex-shrink: 0; width: 0.5rem; height: 0.5rem; border-radius: 50%; background-color: cyan;"></span>
+                <span style="margin-left: 0.5rem; flex-shrink: 0; width: 0.5rem; height: 0.5rem; border-radius: 50%; background-color: cyan;"></span>
+                <span style="margin-left: 0.5rem; flex-shrink: 0; width: 0.5rem; height: 0.5rem; border-radius: 50%; background-color: cyan;"></span>
+            </div>
+        </button>
         <span style="display: inline-block; font-size: 2rem; font-weight: 900;" x-show:animate.zoom.spin.collect.180.faster="showSide" x-bind="animating = $animation.active">+</span>
         <span style="display: inline-block; font-size: 2rem; font-weight: 900;" x-show="$and(!animating, !showSide)" x-on:click="console.log('clicked')">-</span>
         <div style="position: relative;">

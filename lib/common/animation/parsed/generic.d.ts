@@ -25,7 +25,7 @@ export declare class ParsedAnimation implements IParsedAnimation {
     constructor(options: ParsedElementAnimationOptions, mode_?: ParsedElementAnimationMode);
     Run(show: boolean, target?: AnimationTargetType, afterHandler?: (isCanceled?: boolean, show?: boolean) => void, beforeHandler?: (show?: boolean) => void): void;
     Cancel(target?: AnimationTargetType): void;
-    Bind(target: HTMLElement): AnimationBindInfo;
+    Bind(target: AnimationTargetType): AnimationBindInfo;
     BindOne(show: boolean, target?: AnimationTargetType): AnimationBindInfo;
     AddBeforeHandler(handler: () => void): void;
     RemoveBeforeHandler(handler: () => void): void;

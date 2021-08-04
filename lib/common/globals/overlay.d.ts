@@ -8,7 +8,6 @@ export declare class OverlayGlobalHandler extends GlobalHandler {
     private updateBody_;
     private padBody_;
     private scopeId_;
-    private proxy_;
     private clickHandlers_;
     private resizeHandler_;
     private state_;

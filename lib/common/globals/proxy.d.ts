@@ -1,10 +1,10 @@
-import { GlobalHandler } from './generic';
-export declare class ProxyGlobalHandler extends GlobalHandler {
+import { SimpleGlobalHandler } from './generic';
+export declare class ProxyGlobalHandler extends SimpleGlobalHandler {
     constructor();
 }
-export declare class RefsGlobalHandler extends GlobalHandler {
+export declare class RefsGlobalHandler extends SimpleGlobalHandler {
     constructor();
 }
-export declare class RootGlobalHandler extends GlobalHandler {
+export declare class RootGlobalHandler extends SimpleGlobalHandler {
     constructor();
 }

@@ -62,7 +62,6 @@ export declare class RouterGlobalHandler extends GlobalHandler implements IRoute
     private middlewares_;
     private ajaxPrefix_;
     private scopeId_;
-    private proxy_;
     private mountInfo_;
     private onEvent_;
     private origin_;

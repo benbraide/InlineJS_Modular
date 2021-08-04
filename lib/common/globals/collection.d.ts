@@ -25,7 +25,6 @@ export declare class CollectionDirectiveHandler extends ExtendedDirectiveHandler
 }
 export declare class CollectionGlobalHandler<EntryType> extends GlobalHandler {
     protected auth_: IAuthGlobalHandler;
-    protected proxy_: any;
     protected listProxy_: any;
     private origin_;
     protected scopeId_: string;

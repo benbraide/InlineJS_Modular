@@ -1,13 +1,13 @@
-import { GlobalHandler } from './generic';
-export declare class ComponentGlobalHandler extends GlobalHandler {
+import { SimpleGlobalHandler } from './generic';
+export declare class ComponentGlobalHandler extends SimpleGlobalHandler {
     constructor();
 }
-export declare class ComponentKeyGlobalHandler extends GlobalHandler {
+export declare class ComponentKeyGlobalHandler extends SimpleGlobalHandler {
     constructor();
 }
-export declare class LocalsGlobalHandler extends GlobalHandler {
+export declare class LocalsGlobalHandler extends SimpleGlobalHandler {
     constructor();
 }
-export declare class GetScopeGlobalHandler extends GlobalHandler {
+export declare class GetScopeGlobalHandler extends SimpleGlobalHandler {
     constructor();
 }

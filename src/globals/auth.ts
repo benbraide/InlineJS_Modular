@@ -17,13 +17,18 @@ export class AuthGlobalHandler extends GlobalHandler implements IAuthGlobalHandl
 
     public constructor(private router_: IRouterGlobalHandler, private prefix_ = '', initializeUser = true){
         super('auth', null, null, () => {
-            let fetchInfo = () => {
-                fetch(this.BuildPath_('user'), {
-                    method: 'GET',
-                    credentials: 'same-origin',
-                }).then(response => response.json()).then((response) => {
-                    this.userInfo_ = ((response && response['ok']) ? response['data'] : null);
-                });
+            let fetchInfo = (data?: Record<string, any>) => {
+                if (!data){
+                    fetch(this.BuildPath_('user'), {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                    }).then(response => response.json()).then((response) => {
+                        this.userInfo_ = ((response && response['ok']) ? response['data'] : null);
+                    });
+                }
+                else{//Use data
+                    this.userInfo_ = data;
+                }
             };
 
             if (initializeUser){

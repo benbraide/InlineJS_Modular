@@ -3,7 +3,6 @@ import { GlobalHandler } from './generic';
 export declare class PageGlobalHandler extends GlobalHandler implements IPageGlobalHandler {
     private router_;
     private scopeId_;
-    private proxy_;
     private observer_;
     private path_;
     private persistent_;

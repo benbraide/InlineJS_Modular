@@ -141,7 +141,7 @@ export class ParsedAnimation implements IParsedAnimation{
         }
     }
 
-    public Bind(target: HTMLElement): AnimationBindInfo{
+    public Bind(target: AnimationTargetType): AnimationBindInfo{
         return null;
     }
 

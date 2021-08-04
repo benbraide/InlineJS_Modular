@@ -3,7 +3,6 @@ import { GlobalHandler } from './generic';
 export declare class AuthGlobalHandler extends GlobalHandler implements IAuthGlobalHandler {
     private router_;
     private prefix_;
-    private proxy_;
     private userProxy_;
     private origin_;
     private userInfo_;
