@@ -11,6 +11,6 @@ export declare class BodyGlobalHandler extends SimpleGlobalHandler {
 export declare class ConsoleGlobalHandler extends SimpleGlobalHandler {
     constructor();
 }
-export declare class AlertGlobalHandler extends SimpleGlobalHandler {
+export declare class WindowAlertGlobalHandler extends SimpleGlobalHandler {
     constructor();
 }

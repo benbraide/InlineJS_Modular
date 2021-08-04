@@ -12,7 +12,7 @@ export declare class DirectiveHandler implements IDirectiveHandler {
     Expunge(element: HTMLElement): void;
     protected AddStorage_(data: any, element?: HTMLElement): string;
     protected RemoveStorage_(key: string): void;
-    static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (target: object, prop: string | number | symbol, value: any) => boolean, target?: any): any;
+    static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (prop: string | number | symbol, value: any, target?: object) => boolean, target?: any): any;
     static Evaluate(region: IRegion, element: HTMLElement, expression: string, useWindow?: boolean, ...args: any): any;
     static EvaluateAlways(region: IRegion, element: HTMLElement, expression: string, useWindow?: boolean, ...args: any): any;
     static BlockEvaluate(region: IRegion, element: HTMLElement, expression: string, useWindow?: boolean, ...args: any): any;

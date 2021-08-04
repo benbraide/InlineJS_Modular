@@ -1,7 +1,7 @@
 {
-  "name": "inlinejs",
-  "version": "1.0.0",
-  "description": "InlineJS built with modules",
+  "name": "@benbraide/inlinejs",
+  "version": "0.1.0",
+  "description": "Run javascript code by embedding them in your HTML using the element as context.",
   "main": "./lib/common/index.js",
   "module": "./lib/esm/index.js",
   "files": [

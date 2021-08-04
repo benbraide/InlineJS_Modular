@@ -1,4 +1,4 @@
-import { IRouterGlobalHandler, OnRouterLoadHandlerType, IBackPath } from '../typedefs';
+import { IRouterGlobalHandler, OnRouterLoadHandlerType, PathInfo, IBackPath } from '../typedefs';
 import { ExtendedDirectiveHandler } from '../directives/extended/generic';
 import { GlobalHandler } from './generic';
 export interface PageOptions {
@@ -15,10 +15,6 @@ export interface PageInfo {
     title: string;
     middlewares: Array<string>;
     onLoad: (reloaded?: boolean) => void;
-}
-export interface PathInfo {
-    base: string;
-    query: string;
 }
 export declare class BackPath implements IBackPath {
 }

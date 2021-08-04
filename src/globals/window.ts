@@ -24,8 +24,8 @@ export class ConsoleGlobalHandler extends SimpleGlobalHandler{
     }
 }
 
-export class AlertGlobalHandler extends SimpleGlobalHandler{
+export class WindowAlertGlobalHandler extends SimpleGlobalHandler{
     public constructor(){
-        super('alert', () => window.alert.bind(window));
+        super('windowAlert', () => window.alert.bind(window));
     }
 }

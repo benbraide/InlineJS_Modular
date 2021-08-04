@@ -1,11 +1,14 @@
 import { IConfig } from './typedefs';
 export declare class Config implements IConfig {
+    private appName_;
     private enableOptimizedBinds_;
     private directivePrefix_;
     private directiveRegex_;
     private keyMap_;
     private booleanAttributes_;
-    constructor();
+    constructor(appName_?: string);
+    SetAppName(name: string): void;
+    GetAppName(): string;
     SetDirectivePrefix(value: string): void;
     GetDirectivePrefix(): string;
     GetDirectiveRegex(): RegExp;

@@ -1,10 +1,7 @@
-import { GlobalHandler } from './generic';
-export declare class EventGlobalHandler extends GlobalHandler {
+import { SimpleGlobalHandler } from './generic';
+export declare class ExpandEventGlobalHandler extends SimpleGlobalHandler {
     constructor();
 }
-export declare class ExpandEventGlobalHandler extends GlobalHandler {
-    constructor();
-}
-export declare class DispatchEventGlobalHandler extends GlobalHandler {
+export declare class DispatchEventGlobalHandler extends SimpleGlobalHandler {
     constructor();
 }

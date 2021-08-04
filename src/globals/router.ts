@@ -1,4 +1,4 @@
-import { IDirective, DirectiveHandlerReturn, IRegion, IRouterGlobalHandler, OnRouterLoadHandlerType, IBackPath } from '../typedefs'
+import { IDirective, DirectiveHandlerReturn, IRegion, IRouterGlobalHandler, OnRouterLoadHandlerType, PathInfo, IBackPath } from '../typedefs'
 import { ExtendedDirectiveHandler } from '../directives/extended/generic'
 import { Fetch } from '../utilities/fetch'
 import { GlobalHandler } from './generic'
@@ -20,11 +20,6 @@ export interface PageInfo{
     title: string;
     middlewares: Array<string>;
     onLoad: (reloaded?: boolean) => void;
-}
-
-export interface PathInfo{
-    base: string;
-    query: string;
 }
 
 export class BackPath implements IBackPath{}

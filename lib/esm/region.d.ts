@@ -1,8 +1,21 @@
-import { IRegion, IElementScope, IState, IProxy, IChanges, IChangeRefInfo, IEvaluator, IProcessor, IConfig, IDirectiveManager, IGlobalManager, IOutsideEventManager, IIntersectionObserverManager, IAlertHandler, IRootElement, IParsedAnimation, IAnimationParser } from './typedefs';
+import { IRegion, IElementScope, IState, IProxy, IChanges, IChangeRefInfo, IEvaluator, IProcessor, IConfig, IDatabase, IDirectiveManager, IGlobalManager, IOutsideEventManager, IIntersectionObserverManager, IAlertHandler, IRootElement, AnimationBindInfo, IParsedAnimation, IAnimationParser, AnimationTargetType, IResizeObserver } from './typedefs';
+export declare class NoAnimation implements IParsedAnimation {
+    private beforeHandlers_;
+    private afterHandlers_;
+    Run(show: boolean, target?: AnimationTargetType, afterHandler?: (isCanceled?: boolean, show?: boolean) => void, beforeHandler?: (show?: boolean) => void): void;
+    Cancel(): void;
+    Bind(target?: AnimationTargetType): AnimationBindInfo;
+    BindOne(show: boolean, target?: AnimationTargetType): AnimationBindInfo;
+    AddBeforeHandler(handler: () => void): void;
+    RemoveBeforeHandler(handler: () => void): void;
+    AddAfterHandler(handler: (isCanceled?: boolean) => void): void;
+    RemoveAfterHandler(handler: (isCanceled?: boolean) => void): void;
+}
 export declare class Region implements IRegion {
     private rootElement_;
     private static components_;
     private static postProcessCallbacks_;
+    private static forcedPostProcessCallbacks_;
     private static lastId_;
     private static lastSubId_;
     private static entries_;
@@ -10,6 +23,7 @@ export declare class Region implements IRegion {
     private static hooks_;
     private static evaluator_;
     private static config_;
+    private static database_;
     private static directiveManager_;
     private static globalManager_;
     private static outsideEventManager_;
@@ -30,6 +44,7 @@ export declare class Region implements IRegion {
     private refs_;
     private observer_;
     private intersectionObserverManager_;
+    private resizeObserver_;
     private localHandlers_;
     private nextTickCallbacks_;
     private tempCallbacks_;
@@ -59,13 +74,16 @@ export declare class Region implements IRegion {
     GetEvaluator(): IEvaluator;
     GetProcessor(): IProcessor;
     GetConfig(): IConfig;
+    GetDatabase(createIfNotExists?: boolean): IDatabase;
     GetDirectiveManager(): IDirectiveManager;
     GetGlobalManager(): IGlobalManager;
     GetOutsideEventManager(): IOutsideEventManager;
     GetIntersectionObserverManager(): IIntersectionObserverManager;
+    GetResizeObserver(): IResizeObserver;
     SetAlertHandler(handler: IAlertHandler): IAlertHandler;
     GetAlertHandler(): IAlertHandler;
     Alert(data: any): boolean | void;
+    ParseAnimation(options: Array<string>, target?: AnimationTargetType, parse?: boolean): IParsedAnimation;
     GetRootProxy(): any;
     FindProxy(path: string): IProxy;
     AddProxy(proxy: IProxy): void;
@@ -110,6 +128,7 @@ export declare class Region implements IRegion {
     static GetEvaluator(): IEvaluator;
     static GetProcessor(): IProcessor;
     static GetConfig(): IConfig;
+    static GetDatabase(createIfNotExists?: boolean): IDatabase;
     static GetDirectiveManager(): IDirectiveManager;
     static GetGlobalManager(): IGlobalManager;
     static SetAlertHandler(handler: IAlertHandler): IAlertHandler;
@@ -117,7 +136,7 @@ export declare class Region implements IRegion {
     static Alert(data: any): boolean | void;
     static SetAnimationParser(parser: IAnimationParser): void;
     static GetAnimationParser(): IAnimationParser;
-    static ParseAnimation(options: Array<string>, target?: HTMLElement | ((fraction: number) => void), parse?: boolean): IParsedAnimation;
+    static ParseAnimation(options: Array<string>, target?: AnimationTargetType, parse?: boolean): IParsedAnimation;
     static Get(id: string): IRegion;
     static GetCurrent(id: string): IRegion;
     static Infer(element: HTMLElement | string): IRegion;
@@ -126,14 +145,14 @@ export declare class Region implements IRegion {
     static Find(key: string, getNativeProxy: true): any;
     static PushPostProcessCallback(): void;
     static PopPostProcessCallback(): void;
-    static AddPostProcessCallback(callback: () => void): void;
+    static AddPostProcessCallback(callback: () => void, forced?: boolean): void;
     static TraversePostProcessCallbacks(handler: (callback: () => void) => void): void;
     static ExecutePostProcessCallbacks(pop?: boolean): void;
     static IsObject(target: any): boolean;
     static IsEqual(first: any, second: any): boolean;
     static DeepCopy(target: any): any;
     static ToString(value: any): string;
-    static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (target: object, prop: string | number | symbol, value: any) => boolean, target?: any): any;
+    static CreateProxy(getter: (prop: string) => any, contains: Array<string> | ((prop: string) => boolean), setter?: (prop: string | number | symbol, value: any, target?: object) => boolean, target?: any): any;
     static UnsubscribeAll(list: Array<IChangeRefInfo>): void;
     static InsertHtml(target: HTMLElement, value: string, replace?: boolean, append?: boolean, region?: IRegion): void;
     static GetElementKeyName(): string;

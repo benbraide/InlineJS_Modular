@@ -68,16 +68,15 @@ export interface IChanges {
     PopOrigin(): ChangeCallbackType;
 }
 export interface IState {
-    PushElementContext(element: HTMLElement): void;
-    PopElementContext(): HTMLElement;
-    GetElementContext(): HTMLElement;
-    PushEventContext(Value: Event): void;
-    PopEventContext(): Event;
-    GetEventContext(): Event;
+    PushContext(key: string, value: any): void;
+    PopContext(key: string): void;
+    GetContext(key: string, noResult?: any): any;
     TrapGetAccess(callback: ChangeCallbackType, changeCallback: ChangeCallbackType | true, elementContext: HTMLElement | string, staticCallback?: () => void): Record<string, Array<string>>;
     ReportError(value: any, ref?: any): void;
     Warn(value: any, ref?: any): void;
     Log(value: any, ref?: any): void;
+    ElementContextKey(): string;
+    EventContextKey(): string;
 }
 export interface ITrapInfo {
     stopped: boolean;
@@ -172,6 +171,8 @@ export interface IEvaluator {
     GetScopeRegionIds(): IStack<string>;
 }
 export interface IConfig {
+    SetAppName(name: string): void;
+    GetAppName(): string;
     SetDirectivePrefix(value: string): void;
     GetDirectivePrefix(): string;
     GetDirectiveRegex(): RegExp;
@@ -231,37 +232,78 @@ export interface IIntersectionObserverManager {
     RemoveByKey(key: string, stop?: boolean): void;
     RemoveAll(target: HTMLElement, stop?: boolean): void;
 }
+export declare type ResizeObserverHandlerType = (entry?: ResizeObserverEntry, key?: string, observer?: IResizeObserver) => void;
+export interface IResizeObserver {
+    Bind(element: HTMLElement, handler: ResizeObserverHandlerType): string;
+    Unbind(target: string | HTMLElement): void;
+    GetObserver(): globalThis.ResizeObserver;
+}
 export interface IAlertHandler {
-    Alert(data: any): boolean | void;
-    Confirm(data: any, confirmed: any, canceled?: any): void;
+    Alert(data: any): void;
+    Confirm(data: any, confirmed: () => void, canceled?: () => void): void;
     Prompt(data: any, callback: (response: any) => void): void;
-    ServerError(err: any): boolean | void;
+    ServerError(err: any): void;
 }
 export interface IAnimationEase {
+    GetKey(): string;
     Run(time: number, duration: number): number;
 }
 export interface IAnimationActor {
+    GetKey(): string;
     Prepare(element: HTMLElement): void;
     Step(fraction: number, element: HTMLElement): void;
+    GetPreferredEase(show?: boolean): IAnimationEase;
+    GetPreferredDuration(show?: boolean): number;
 }
+export declare type AnimationHandlerType = (fraction: number, actors?: Array<IAnimationActor>) => void;
+export declare type AnimationTargetType = HTMLElement | AnimationHandlerType;
 export interface AnimationBindInfo {
-    run: () => void;
+    run: (data?: any, endOnly?: boolean) => void;
     cancel: (graceful?: boolean) => void;
-    addBeforeHandler: (handler: () => void) => void;
-    removeBeforeHandler: (handler: () => void) => void;
-    addAfterHandler: (handler: (isCanceled?: boolean) => void) => void;
-    removeAfterHandler: (handler: (isCanceled?: boolean) => void) => void;
+    addBeforeHandler: (handler: (data?: any) => void) => void;
+    removeBeforeHandler: (handler: (data?: any) => void) => void;
+    addAfterHandler: (handler: (isCanceled?: boolean, data?: any) => void) => void;
+    removeAfterHandler: (handler: (isCanceled?: boolean) => void, data?: any) => void;
+    getTarget: () => AnimationTargetType;
 }
 export interface IAnimation {
-    Bind(target: HTMLElement | ((fraction: number) => void)): AnimationBindInfo;
+    Bind(target: AnimationTargetType): AnimationBindInfo;
 }
-export interface IParsedAnimation {
-    Run(show: boolean, target?: HTMLElement | ((fraction: number) => void), afterHandler?: (isCanceled?: boolean, show?: boolean) => void, beforeHandler?: (show?: boolean) => void): void;
-    Cancel(show: boolean, target?: HTMLElement | ((fraction: number) => void)): void;
-    Bind(show: boolean, target?: HTMLElement | ((fraction: number) => void)): AnimationBindInfo;
+export interface IParsedAnimation extends IAnimation {
+    Run(show: boolean, target?: AnimationTargetType, afterHandler?: (isCanceled?: boolean, show?: boolean) => void, beforeHandler?: (show?: boolean) => void): void;
+    Cancel(target?: AnimationTargetType): void;
+    BindOne(show: boolean, target?: AnimationTargetType): AnimationBindInfo;
+    AddBeforeHandler(handler: () => void): void;
+    RemoveBeforeHandler(handler: () => void): void;
+    AddAfterHandler(handler: (isCanceled?: boolean) => void): void;
+    RemoveAfterHandler(handler: (isCanceled?: boolean) => void): void;
+}
+export interface IParsedCreatorReturn<T> {
+    object: T;
+    count: number;
+}
+export interface IParsedCreator<T> {
+    GetKey(): string;
+    Create(options: Array<string>, index?: number, target?: AnimationTargetType): IParsedCreatorReturn<T>;
 }
 export interface IAnimationParser {
-    Parse(options: Array<string>, target?: HTMLElement | ((fraction: number) => void)): IParsedAnimation;
+    AddEaseCreator(creator: IParsedCreator<IAnimationEase>): void;
+    RemoveEaseCreator(key: string): void;
+    GetEaseCreator(key: string): IParsedCreator<IAnimationEase>;
+    AddEase(ease: IAnimationEase): void;
+    RemoveEase(key: string): void;
+    GetEase(key: string): IAnimationEase;
+    AddActorCreator(creator: IParsedCreator<IAnimationActor>): void;
+    RemoveActorCreator(key: string): void;
+    GetActorCreator(key: string): IParsedCreator<IAnimationActor>;
+    AddActor(actor: IAnimationActor): void;
+    RemoveActor(key: string): void;
+    GetActor(key: string): IAnimationActor;
+    Parse(options: Array<string>, target?: AnimationTargetType): IParsedAnimation;
+}
+export interface IDatabase {
+    Read(key: string, successHandler?: (data: any) => void, errorHandler?: () => void): Promise<any>;
+    Write(key: string, data: any, successHandler?: () => void, errorHandler?: () => void): Promise<void>;
 }
 export interface IRegion {
     SetOptimizedBindsState(value: boolean): void;
@@ -285,13 +327,16 @@ export interface IRegion {
     GetEvaluator(): IEvaluator;
     GetProcessor(): IProcessor;
     GetConfig(): IConfig;
+    GetDatabase(createIfNotExists?: boolean): IDatabase;
     GetDirectiveManager(): IDirectiveManager;
     GetGlobalManager(): IGlobalManager;
     GetOutsideEventManager(): IOutsideEventManager;
     GetIntersectionObserverManager(): IIntersectionObserverManager;
+    GetResizeObserver(): IResizeObserver;
     SetAlertHandler(handler: IAlertHandler): IAlertHandler;
     GetAlertHandler(): IAlertHandler;
     Alert(data: any): boolean | void;
+    ParseAnimation(options: Array<string>, target?: AnimationTargetType, parse?: boolean): IParsedAnimation;
     GetRootProxy(): IProxy;
     FindProxy(path: string): IProxy;
     AddProxy(proxy: IProxy): void;
@@ -355,4 +400,37 @@ export interface Size {
 export interface NamedDirection {
     x: 'up' | 'right' | 'down' | 'left' | 'none';
     y: 'up' | 'right' | 'down' | 'left' | 'none';
+}
+export interface PathInfo {
+    base: string;
+    query: string;
+}
+export interface ExtendedPathInfo {
+    base: string;
+    query: string;
+    formattedQuery: Record<string, Array<string> | string>;
+}
+export declare type OnRouterLoadHandlerType = (path?: ExtendedPathInfo, reloaded?: boolean) => void;
+export interface IBackPath {
+}
+export interface IRouterGlobalHandler {
+    Goto(target: string | PathInfo | IBackPath, shouldReload?: boolean | (() => boolean)): void;
+    Reload(): void;
+    BindOnLoad(handler: OnRouterLoadHandlerType): void;
+    UnbindOnLoad(handler: OnRouterLoadHandlerType): void;
+    GetCurrentUrl(): string;
+    GetCurrentQuery(key?: string): Record<string, Array<string> | string> | Array<string> | string;
+    GetActivePage(): PathInfo;
+}
+export interface IPageGlobalHandler {
+    SetNextPageData(data: Record<string, any>): void;
+}
+export interface IAuthGlobalHandler {
+    Check(): boolean;
+    BuildPath(path: string): string;
+}
+export interface IProduct {
+    sku: string;
+    title: string;
+    price: number;
 }
