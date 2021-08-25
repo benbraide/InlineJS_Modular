@@ -4,7 +4,7 @@ export class Database implements IDatabase{
     private handle_: IDBDatabase = null;
     private attempted_ = false;
     private attempting_ = false;
-    private queued_ = new Array<() => void>();
+    private queued_ = new Array<(error?: boolean) => void>();
 
     public constructor(private name_: string){}
 
@@ -14,11 +14,21 @@ export class Database implements IDatabase{
         }
 
         this.attempting_ = true;
-        let openRequest = window.indexedDB.open(this.name_);
+        let openRequest = window.indexedDB.open(this.name_), callQueued = (error: boolean) => {
+            this.queued_.forEach((callback) => {
+                try{
+                    callback(error);
+                }
+                catch{}
+            });
+
+            this.queued_ = new Array<(error?: boolean) => void>();
+        };
 
         openRequest.addEventListener('error', (e) => {
             this.attempted_ = true;
             this.attempting_ = false;
+            callQueued(true);
         });
         
         openRequest.addEventListener('success', () => {
@@ -26,14 +36,7 @@ export class Database implements IDatabase{
             this.attempting_ = false;
             
             this.handle_ = openRequest.result;
-            this.queued_.forEach((callback) => {
-                try{
-                    callback();
-                }
-                catch{}
-            });
-
-            this.queued_ = new Array<() => void>();
+            callQueued(false);
         });
 
         openRequest.addEventListener('upgradeneeded', () => {
@@ -57,7 +60,7 @@ export class Database implements IDatabase{
     }
     
     public Read(key: string, successHandler?: (data: any) => void, errorHandler?: () => void): Promise<any>{
-        if (!this.handle_ || this.attempted_){
+        if (!this.handle_ && this.attempted_){
             return null;
         }
         
@@ -119,7 +122,7 @@ export class Database implements IDatabase{
     }
 
     public Write(key: string, data: any, successHandler?: () => void, errorHandler?: () => void): Promise<void>{
-        if (!this.handle_ || this.attempted_){
+        if (!this.handle_ && this.attempted_){
             return null;
         }
         

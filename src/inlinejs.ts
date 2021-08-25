@@ -28,7 +28,7 @@ import { ComponentKeyGlobalHandler, ComponentGlobalHandler, LocalsGlobalHandler,
 import { ProxyGlobalHandler, RefsGlobalHandler, RootGlobalHandler } from './globals/proxy'
 import { ParentGlobalHandler, AncestorGlobalHandler, SiblingGlobalHandler, FormGlobalHandler } from './globals/dom'
 import { ClassGlobalHandler } from './globals/class'
-import { WindowGlobalHandler, DocumentGlobalHandler, BodyGlobalHandler, ConsoleGlobalHandler, AlertGlobalHandler } from './globals/window'
+import { WindowGlobalHandler, DocumentGlobalHandler, BodyGlobalHandler, ConsoleGlobalHandler, WindowAlertGlobalHandler } from './globals/window'
 import { ExpandEventGlobalHandler, DispatchEventGlobalHandler } from './globals/event'
 import { WatchGlobalHandler, WhenGlobalHandler, OnceGlobalHandler } from './globals/watch'
 
@@ -90,7 +90,7 @@ Region.GetGlobalManager().AddHandler(new WindowGlobalHandler());
 Region.GetGlobalManager().AddHandler(new DocumentGlobalHandler());
 Region.GetGlobalManager().AddHandler(new BodyGlobalHandler());
 Region.GetGlobalManager().AddHandler(new ConsoleGlobalHandler());
-Region.GetGlobalManager().AddHandler(new AlertGlobalHandler());
+Region.GetGlobalManager().AddHandler(new WindowAlertGlobalHandler());
 
 Region.GetGlobalManager().AddHandler(new ExpandEventGlobalHandler());
 Region.GetGlobalManager().AddHandler(new DispatchEventGlobalHandler());

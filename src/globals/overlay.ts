@@ -31,14 +31,15 @@ export class OverlayDirectiveHandler extends ExtendedDirectiveHandler{
                 this.overlay_.AddClickHandler(onEvent);
                 region.GetElementScope(element).uninitCallbacks.push(() => this.overlay_.RemoveClickHandler(onEvent));
             }
-
-            let regionId = region.GetId(), value = false;
-            region.GetState().TrapGetAccess(() => {//Bind value to visibility
-                if (!! ExtendedDirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value) != value){
-                    value = !value;
-                    this.overlay_.OffsetCount(value ? 1 : -1);
-                }
-            }, true, element);
+            else{
+                let regionId = region.GetId(), value = false;
+                region.GetState().TrapGetAccess(() => {//Bind value to visibility
+                    if (!! ExtendedDirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value) != value){
+                        value = !value;
+                        this.overlay_.OffsetCount(value ? 1 : -1);
+                    }
+                }, true, element);
+            }
 
             return DirectiveHandlerReturn.Handled;
         });

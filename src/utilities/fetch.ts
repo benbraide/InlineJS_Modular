@@ -43,7 +43,7 @@ export class Fetch implements IFetch{
                 this.AlertAccess_(`handlers.${prop}`, true);
                 return this.handlers_[prop];
             }
-        }, Object.keys(this.handlers_), (target, prop, value) => {
+        }, Object.keys(this.handlers_), (prop, value) => {
             if (typeof prop === 'string'){
                 if (this.handlers_.onBeforePropSet && !this.handlers_.onBeforePropSet(`handlers.${prop}`, value)){
                     return false;
@@ -92,7 +92,7 @@ export class Fetch implements IFetch{
             }
 
             return null;
-        }, ['url', 'mount', 'handlers', 'mode'], (target, prop, value) => {
+        }, ['url', 'mount', 'handlers', 'mode'], (prop, value) => {
             if (typeof prop !== 'string'){
                 return true;
             }
@@ -113,8 +113,10 @@ export class Fetch implements IFetch{
 
     public Get(region?: IRegion): Promise<any>{
         let promise: Promise<any> = null;
-        if (!this.url_){//Remove children
-            this.EmptyMount_();
+        if (!this.url_){//No loading
+            if (this.url_ === ''){//Remove children
+                this.EmptyMount_();
+            }
         }
         else if (this.mount_){
             if (this.mount_ instanceof HTMLSelectElement){
@@ -316,7 +318,11 @@ export class Fetch implements IFetch{
         }
         
         if (prop === 'url'){
-            if ((typeof value === 'string' || value === null) && (value = value.trim()) !== this.url_ || force){
+            if (typeof value === 'string' && (value = value.trim()) !== this.url_ || force){
+                this.url_ = value;
+                this.AlertAccess_(prop, false, value);
+            }
+            else if ((value === null || value === undefined) && (value !== this.url_ || force)){
                 this.url_ = value;
                 this.AlertAccess_(prop, false, value);
             }

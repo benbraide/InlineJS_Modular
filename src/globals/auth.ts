@@ -36,8 +36,8 @@ export class AuthGlobalHandler extends GlobalHandler implements IAuthGlobalHandl
             }
             
             this.proxy_ = Region.CreateProxy((prop) => {
-                if (prop === 'isGuest'){
-                    return !this.Check();
+                if (prop === 'check'){
+                    return () => this.Check();
                 }
 
                 if (prop === 'user'){
@@ -71,7 +71,7 @@ export class AuthGlobalHandler extends GlobalHandler implements IAuthGlobalHandl
                 if (prop === 'prefix'){
                     return this.prefix_;
                 }
-            }, ['isGuest', 'user', 'register', 'login', 'logout', 'update', 'delete', 'refresh', 'prefix'], (prop, value) => {
+            }, ['check', 'user', 'register', 'login', 'logout', 'update', 'delete', 'refresh', 'prefix'], (prop, value) => {
                 if (typeof prop !== 'string'){
                     return true;
                 }

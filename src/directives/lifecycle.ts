@@ -5,7 +5,13 @@ import { DirectiveHandler } from './generic'
 export class InitDirectiveHandler extends DirectiveHandler{
     public constructor(){
         super('init', (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            DirectiveHandler.BlockEvaluate(region, element, directive.value);
+            if (directive.arg.options.includes('nexttick')){
+                let regionId = region.GetId();
+                region.AddNextTickCallback(() => DirectiveHandler.BlockEvaluate(Region.Get(regionId), element, directive.value));
+            }
+            else{
+                DirectiveHandler.BlockEvaluate(region, element, directive.value);
+            }
             return DirectiveHandlerReturn.Handled;
         }, false);
     }
@@ -24,8 +30,15 @@ export class UninitDirectiveHandler extends DirectiveHandler{
 export class PostDirectiveHandler extends DirectiveHandler{
     public constructor(){
         super('post', (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let regionId = region.GetId();
-            region.AddElement(element, true).postProcessCallbacks.push(() => DirectiveHandler.BlockEvaluate(Region.Get(regionId), element, directive.value));
+            let regionId = region.GetId(), isNextTick = directive.arg.options.includes('nexttick');
+            region.AddElement(element, true).postProcessCallbacks.push(() => {
+                if (isNextTick){
+                    Region.Get(regionId).AddNextTickCallback(() => DirectiveHandler.BlockEvaluate(Region.Get(regionId), element, directive.value));
+                }
+                else{
+                    DirectiveHandler.BlockEvaluate(Region.Get(regionId), element, directive.value);
+                }
+            });
             return DirectiveHandlerReturn.Handled;
         }, false);
     }

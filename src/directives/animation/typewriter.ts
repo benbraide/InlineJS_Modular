@@ -301,7 +301,7 @@ export class TypewriterDirectiveHandler extends ExtendedDirectiveHandler{
                 return ((newIndex < state.lines.length) ? newIndex : 0);
             };
 
-            let startTimestamp: DOMHighResTimeStamp = null, duration = options.delay, regionId = region.GetId();
+            let startTimestamp: DOMHighResTimeStamp = null, interval = -1, regionId = region.GetId();
             let pass = (timestamp: DOMHighResTimeStamp) => {
                 if (!state.active){
                     return;
@@ -311,9 +311,13 @@ export class TypewriterDirectiveHandler extends ExtendedDirectiveHandler{
                     startTimestamp = timestamp;
                 }
 
-                if ((timestamp - startTimestamp) < duration){//Duration not met
+                if ((interval != -1 && (timestamp - startTimestamp) < interval) || (timestamp - startTimestamp) < options.delay){//Duration not met
                     requestAnimationFrame(pass);
                     return;
+                }
+
+                if (interval != -1){
+                    interval = -1;
                 }
 
                 if (!state.complete){
@@ -325,12 +329,12 @@ export class TypewriterDirectiveHandler extends ExtendedDirectiveHandler{
                             if (options.delete && !state.deleting){//Begin delete
                                 state.deleting = true;
                                 state.complete = false;
-                                duration = options.deleteDelay;
+                                interval = options.deleteDelay;
                             }
                             else{//Complete
                                 state.deleting = false;
                                 state.complete = true;
-                                duration = options.interval;
+                                interval = options.interval;
                             }
                         }
                         else{//Advance
@@ -342,9 +346,7 @@ export class TypewriterDirectiveHandler extends ExtendedDirectiveHandler{
                     startTimestamp = null;
                     state.complete = false;
                     
-                    duration = options.delay;
                     state.current.lineIndex = getNextLineIndex(state.current.lineIndex);
-
                     if (options.iterations != -1 && (options.iterations <= ++state.iterations)){
                         return;
                     }
@@ -360,6 +362,10 @@ export class TypewriterDirectiveHandler extends ExtendedDirectiveHandler{
                 };
                 
                 region.GetIntersectionObserverManager().Add(element, IntersectionObserver.BuildOptions(intersectionOptions)).Start((entry, key) => {
+                    if (!entry.isIntersecting){
+                        return;
+                    }
+                    
                     requestAnimationFrame(pass);
                     
                     let myRegion = Region.Get(regionId);

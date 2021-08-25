@@ -547,7 +547,7 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
         }
 
         if (includeAjaxPrefix && this.ajaxPrefix_){
-            url = `${this.ajaxPrefix_}/${url}`;
+            return (url.startsWith('/') ? `${this.ajaxPrefix_}${url}` : `${this.ajaxPrefix_}/${url}`);
         }
         
         return (url.startsWith('/') ? url : `/${url}`);
@@ -565,6 +565,9 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
     public BuildUrl(path: PathInfo, absolute = true, process = true, includeAjaxPrefix = false){
         let base = (process ? this.ProcessUrl(path.base, includeAjaxPrefix) : path.base), query = (process ? this.ProcessQuery(path.query) : path.query), url: string;
         if (query){
+            if (query.startsWith('?') || query.startsWith('&')){
+                query = query.substr(1);
+            }
             url = (base.includes('?') ? `${base}&${query}` : `${base}?${query}`);
         }
         else{
@@ -641,7 +644,7 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
     private Load_(path: PathInfo, callback?: (url: string, title: string) => void, shouldReload?: boolean | (() => boolean)){
         let page = this.FindPage_(path), processedPath: PathInfo = {
             base: this.ProcessUrl(path.base),
-            query: this.ProcessUrl(path.query),
+            query: this.ProcessQuery(path.query),
         };
         
         this.SetActiveState_(true);

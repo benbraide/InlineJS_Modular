@@ -1,6 +1,6 @@
 import { Region } from "../../region";
 import { State } from "../../state";
-import { DirectiveHandlerReturn, IDirective, IRegion } from "../../typedefs";
+import { DirectiveHandlerReturn, IDirective, IDirectiveHandler, IRegion } from "../../typedefs";
 import { ExtendedDirectiveHandler } from "./generic";
 
 interface StateInfo{
@@ -18,7 +18,7 @@ interface StateTargetInfo{
 }
 
 export class StateDirectiveHandler extends ExtendedDirectiveHandler{
-    public constructor(){
+    public constructor(private form_: IDirectiveHandler){
         super('state', (region: IRegion, element: HTMLElement, directive: IDirective) => {
             let response = ExtendedDirectiveHandler.CheckEvents(this.key_, region, element, directive, 'change', ['valid', 'dirty', 'typing', 'same']);
             if (response != DirectiveHandlerReturn.Nil){
@@ -144,37 +144,66 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                         }
         
                         myTargetInfo.updateState('dirty', true, false);
+                        if (!myOptions.canType || !options.lazy){
+                            (target as HTMLInputElement).setCustomValidity('');
+                            myTargetInfo.updateState('valid', (target as HTMLInputElement).validity.valid, true);
+                        }
+                        
                         if (options.extended){
                             myTargetInfo.updateState('same', ((target as HTMLInputElement).value === myOptions.value), true);
                             myTargetInfo.updateState('message', (target as HTMLInputElement).validationMessage, null);
                         }
-        
-                        if (!myOptions.canType || !options.lazy){
-                            myTargetInfo.updateState('valid', (target as HTMLInputElement).validity.valid, true);
-                        }
                     };
 
-                    let stoppedTyping = () => {
+                    let stoppedTyping = (submit = true) => {
+                        if (options.lazy){//Update validity
+                            (target as HTMLInputElement).setCustomValidity('');
+                            if (options.extended){
+                                myTargetInfo.updateState('message', (target as HTMLInputElement).validationMessage, null);
+                            }
+                            myTargetInfo.updateState('valid', (target as HTMLInputElement).validity.valid, true);
+                        }
+                        
                         if (!myTargetInfo.state.typing){
                             return;
                         }
                         
                         myTargetInfo.updateState('typing', false, false);
-                        if (options.lazy){//Update validity
-                            myTargetInfo.updateState('valid', (target as HTMLInputElement).validity.valid, true);
-                        }
-
-                        if (options.submit && options.form && options.form.checkValidity()){
+                        if (submit && options.submit && options.form && options.form.checkValidity()){
                             options.form.submit();
+                        }
+                    };
+
+                    let checkValidity = () => {
+                        myTargetInfo.updateState('valid', (target as HTMLInputElement).validity.valid, true);
+                        if (options.extended){
+                            myTargetInfo.updateState('message', (target as HTMLInputElement).validationMessage, null);
+                        }
+                    };
+
+                    let formReset = () => {
+                        checkValidity();
+                        stoppedTyping(false);
+                        
+                        myTargetInfo.updateState('dirty', false, false);
+                        if (options.extended){
+                            myOptions.value = '';
+                            myTargetInfo.updateState('same', ((target as HTMLInputElement).value === myOptions.value), true);
                         }
                     };
                     
                     if (myOptions.canType){
                         target.addEventListener('input', onEvent);
-                        target.addEventListener('blur', stoppedTyping);
+                        target.addEventListener('blur', () => stoppedTyping());
                     }
                     else{
                         target.addEventListener('change', onEvent);
+                    }
+
+                    target.addEventListener(`${this.form_.GetKey()}.validity`, checkValidity);
+                    if (options.form){
+                        options.form.addEventListener('reset', formReset);
+                        options.form.addEventListener(`${this.form_.GetKey()}.reset`, formReset);
                     }
 
                     myTargetInfo.state.valid = (target as HTMLInputElement).validity.valid;

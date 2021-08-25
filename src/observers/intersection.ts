@@ -10,10 +10,6 @@ export class IntersectionObserver implements IIntersectionObserver{
         let key = this.key_;
         this.observer_ = new globalThis.IntersectionObserver((entries, observer) => {
             entries.forEach((entry: IntersectionObserverEntry) => {
-                if (!entry.isIntersecting){
-                    return;
-                }
-                
                 this.handlers_.forEach((handler) => {
                     try{
                         handler(entry, key, observer);

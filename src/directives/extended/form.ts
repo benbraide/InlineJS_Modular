@@ -25,7 +25,7 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
     
     public constructor(key = 'form'){
         super(key, (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let response = ExtendedDirectiveHandler.CheckEvents(this.key_, region, element, directive, 'success', ['error', 'submit']);
+            let response = ExtendedDirectiveHandler.CheckEvents(this.key_, region, element, directive, 'success', ['error', 'submit', 'save', 'load']);
             if (response != DirectiveHandlerReturn.Nil){
                 return response;
             }
@@ -35,14 +35,17 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 reload: false,
                 persistent: false,
                 redirect: false,
+                reset: false,
                 success: false,
                 error: false,
                 nexttick: false,
+                novalidate: false,
+                form: <HTMLFormElement>null,
             };
 
             let middlewares = new Array<IFormMiddleware>();
             directive.arg.options.forEach((option) => {
-                if (option in options){
+                if (option in options && typeof options[option] === 'boolean'){
                     options[option] = true;
                 }
                 else if ((option = option.split('-').join('.')) in this.middlewares_){
@@ -53,18 +56,19 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
             let getAction: () => string, getMethod: () => string;
             if (element instanceof HTMLFormElement){
                 getAction = () => element.action;
-                getMethod = () => (element.method.toLowerCase() || 'get');
+                getMethod = () => (element.method || 'get').toLowerCase();
+                options.form = element;
             }
             else if (element instanceof HTMLAnchorElement){
                 getAction = () => element.href;
-                getMethod = () => (element.getAttribute('data-method') || 'get');
+                getMethod = () => (element.getAttribute('data-method') || 'get').toLowerCase();
             }
             else{
                 getAction = () => element.getAttribute('data-action');
-                getMethod = () => (element.getAttribute('data-method') || 'get');
+                getMethod = () => (element.getAttribute('data-method') || 'get').toLowerCase();
             }
 
-            let buildUrl: (info?: RequestInit) => string, save: () => void, load: () => void, eventName: string;
+            let buildUrl: (info?: RequestInit) => string, save: () => void, eventName: string;
             if (element instanceof HTMLFormElement){
                 eventName = 'submit';
                 if (getMethod() !== 'post'){
@@ -103,28 +107,38 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                         }
                     });
 
-                    Region.GetDatabase().Write(`inlinejs_form_${name}`, fields);
-                };
-
-                load = () => {
-                    let name = element.getAttribute('name');
-                    if (!name){
-                        return;
-                    }
-
-                    Region.GetDatabase().Read(`inlinejs_form_${name}`, (fields) => {
-                        if (!Region.IsObject(fields)){
-                            return;
-                        }
-
-                        [...element.elements].forEach((item) => {
-                            let key = item.getAttribute('name');
-                            if (key && 'value' in item && key in fields){
-                                (item as any).value = fields[key];
-                            }
-                        });
+                    Region.GetDatabase().Write(`inlinejs_form_${name}`, fields, () => {
+                        element.dispatchEvent(new CustomEvent(`${this.key_}.save`));
                     });
                 };
+
+                if (options.persistent){
+                    let name = element.getAttribute('name');
+                    if (name){
+                        Region.GetDatabase().Read(`inlinejs_form_${name}`, (fields) => {
+                            if (!Region.IsObject(fields)){
+                                return;
+                            }
+    
+                            [...element.elements].forEach((item) => {
+                                let key = item.getAttribute('name');
+                                if (key && 'value' in item && key in fields){
+                                    (item as any).value = fields[key];
+                                    if (item instanceof HTMLInputElement || item instanceof HTMLTextAreaElement){
+                                        item.dispatchEvent(new InputEvent('input'));
+                                    }
+                                    else{
+                                        (item as HTMLElement).dispatchEvent(new Event('change'));
+                                    }
+                                }
+                            });
+    
+                            element.dispatchEvent(new CustomEvent(`${this.key_}.load`));
+                        });
+                    }
+
+                    
+                }
             }
             else{//Not a form
                 eventName = 'click';
@@ -206,7 +220,7 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
 
                 if ((!options.success && !options.error) || (options.success && ok) || (options.error && !ok)){
                     if (options.nexttick){
-                        myRegion.AddNextTickCallback(() => evaluate(myRegion, ok, data));
+                        myRegion.AddNextTickCallback(() => evaluate(Region.Get(regionId), ok, data));
                     }
                     else{
                         evaluate(myRegion, ok, data);
@@ -252,13 +266,26 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                         if ('failed' in response){
                             let failed = response['failed'];
                             Object.keys(Region.IsObject(failed) ? failed : {}).forEach((key) => {
-                                errors[key] = failed[key];
+                                let failedValue = failed[key];
+                                
+                                errors[key] = failedValue;
                                 myRegion.GetChanges().AddComposed(key, `${scopeId}.errors`);
+
+                                if (options.form && !options.novalidate){//Set validation error
+                                    let item = options.form.elements.namedItem(key);
+                                    if (item && (item instanceof HTMLInputElement || item instanceof HTMLTextAreaElement || item instanceof HTMLSelectElement)){
+                                        item.setCustomValidity(Array.isArray(failedValue) ? failedValue.join('\n') : Region.ToString(failedValue));
+                                        item.dispatchEvent(new CustomEvent(`${this.key_}.validity`));
+                                    }
+                                }
                             });
                         }
 
                         if ('report' in response){
                             Region.GetAlertHandler().Alert(response['report']);
+                        }
+                        else if ('alert' in response){
+                            Region.GetAlertHandler().Alert(response['alert']);
                         }
 
                         afterHandledEvent(myRegion, (response['ok'] !== false), response['data']);
@@ -266,8 +293,20 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                             return;
                         }
 
-                        let router = ((Region.GetGlobalManager().GetHandler(null, '$router') as unknown) as IRouterGlobalHandler), after: () => void = null;
-                        if ('redirect' in response){
+                        let router = <IRouterGlobalHandler>(Region.GetGlobalManager().GetHandler(null, '$router') as unknown), after: () => void = null;
+                        if (options.redirect){
+                            let redirect = (router ? router.GetCurrentQuery('redirect') : null);
+                            if (typeof redirect === 'string'){
+                                if (options.refresh){
+                                    after = () => window.location.href = (redirect as string);
+                                }
+                                else if (router){
+                                    after = () => router.Goto(redirect as string);
+                                }
+                            }
+                        }
+                        
+                        if (!after && 'redirect' in response){
                             let redirect = response['redirect'];
                             if (Region.IsObject(redirect)){
                                 if (options.refresh || redirect['refresh']){
@@ -275,6 +314,13 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                                 }
                                 else if (router){//Use router
                                     after = () => router.Goto(redirect['page'], (options.reload || redirect['reload']));
+                                }
+
+                                if ('data' in redirect){
+                                    let page = ((Region.GetGlobalManager().GetHandler(null, '$page') as unknown) as IPageGlobalHandler);
+                                    if (page){//Set next page data
+                                        page.SetNextPageData(redirect['data']);
+                                    }
                                 }
                             }
                             else if (typeof redirect === 'string'){
@@ -285,36 +331,24 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                                     after = () => router.Goto(redirect, options.reload);
                                 }
                             }
-
-                            if ('data' in redirect){
-                                let page = ((Region.GetGlobalManager().GetHandler(null, '$page') as unknown) as IPageGlobalHandler);
-                                if (page){//Set next page data
-                                    page.SetNextPageData(redirect['data']);
-                                }
-                            }
                         }
-                        else if (options.redirect){
-                            let redirect = (router ? router.GetCurrentQuery('redirect') : null);
-                            if (typeof redirect === 'string'){
-                                if (options.refresh){
-                                    after = () => window.location.href = (redirect as string);
-                                }
-                                else if (router){
-                                    after = () => router.Goto(redirect as string);
-                                }
-                            }
-                            else if (options.refresh){
+                        else if (!after && options.redirect){
+                            if (options.refresh){
                                 after = () => window.location.href = '/';
                             }
                             else if (router){
                                 after = () => router.Goto('/');
                             }
                         }
-                        else if (options.refresh){
+                        else if (!after && options.refresh){
                             after = () => window.location.reload();
                         }
-                        else if (options.reload && router){
+                        else if (!after && options.reload && router){
                             after = () => router.Reload();
+                        }
+                        else if (!after && options.reset && options.form){
+                            options.form.reset();
+                            myRegion.AddNextTickCallback(() => options.form.dispatchEvent(new CustomEvent(`${this.key_}.reset`)));
                         }
 
                         if (options.persistent && save){
@@ -355,6 +389,7 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
 
             let onEvent = (e: Event) => {
                 e.preventDefault();
+                e.stopPropagation();
                 runMiddleware(handleEvent);
             };
 

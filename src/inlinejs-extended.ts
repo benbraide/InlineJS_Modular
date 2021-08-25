@@ -5,6 +5,7 @@ import { SwalAlertHandler } from './alerts/swal'
 
 import { WatchDirectiveHandler, WhenDirectiveHandler, OnceDirectiveHandler } from './directives/extended/watch'
 import { ImageDirectiveHandler } from './directives/extended/image'
+import { IntersectionDirectiveHandler } from './directives/extended/intersection'
 import { XHRDirectiveHandler, JSONDirectiveHandler } from './directives/extended/xhr'
 import { FormDirectiveHandler } from './directives/extended/form'
 import { ChangeDirectiveHandler } from './directives/extended/change'
@@ -79,12 +80,16 @@ Region.GetDirectiveManager().AddHandler(new WhenDirectiveHandler());
 Region.GetDirectiveManager().AddHandler(new OnceDirectiveHandler());
 
 Region.GetDirectiveManager().AddHandler(new ImageDirectiveHandler());
+Region.GetDirectiveManager().AddHandler(new IntersectionDirectiveHandler());
+
 Region.GetDirectiveManager().AddHandler(new XHRDirectiveHandler());
 Region.GetDirectiveManager().AddHandler(new JSONDirectiveHandler());
 
-Region.GetDirectiveManager().AddHandler(new FormDirectiveHandler());
+const formDirective = new FormDirectiveHandler();
+
+Region.GetDirectiveManager().AddHandler(formDirective);
 Region.GetDirectiveManager().AddHandler(new ChangeDirectiveHandler());
-Region.GetDirectiveManager().AddHandler(new StateDirectiveHandler());
+Region.GetDirectiveManager().AddHandler(new StateDirectiveHandler(formDirective));
 Region.GetDirectiveManager().AddHandler(new CounterDirectiveHandler());
 
 Region.GetDirectiveManager().AddHandler(new AnimateDirectiveHandler());

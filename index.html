@@ -27,7 +27,7 @@
     <div x-data x-overlay:click="$overlay.visible = false">
         <button x-on:click="$overlay.visible = true" x-bind="$overlay.overflow ? $$class($body).add('pad') : $$class($body).remove('pad')">Show Overlay</button>
     </div>
-    <p style="height: 5rem;" x-typewriter.delete.cursor.lazy="typewriterList()" x-data></p>
+    <p style="height: 5rem;" x-typewriter.delete.2000.cursor.lazy="typewriterList()" x-data></p>
     <div x-component="first" x-data="{email: 'user.yahoo@yahoo.com', name: 'John Doe', state: true, getName(){ return this.name }}">
         <h2 x-style:color="color" x-on:click="color = 'red'">First Component</h2>
         <div>

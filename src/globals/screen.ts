@@ -285,6 +285,9 @@ export class ScreenGlobalHandler extends GlobalHandler{
             }));
         }
 
+        this.properties_.scrollPosition = position;
+        this.properties_.scrollPercentage = percentage;
+
         GlobalHandler.region_.GetChanges().AddComposed('scrollPosition', this.scopeId_);
         GlobalHandler.region_.GetChanges().AddComposed('scrollPercentage', this.scopeId_);
 

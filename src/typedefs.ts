@@ -489,5 +489,6 @@ export interface IAuthGlobalHandler{
 export interface IProduct{
     sku: string;
     title: string;
+    avatar: string;
     price: number;
 }

@@ -63,6 +63,11 @@ export class ResourceGlobalHandler extends GlobalHandler{
 
     public Get_(info: ResourceOptions | Array<ResourceOptions>, handler: ResourceHandlerType, concurrent = true){
         let getOne = (info: ResourceOptions) => {
+            if (info.type === 'link'){
+                info.additionalAttributes = (info.additionalAttributes || {});
+                info.additionalAttributes['rel'] = 'stylesheet';
+            }
+            
             let url = this.ProcessUrl(info.path);
             if (!url){
                 return null;

@@ -159,8 +159,8 @@ export class XHRHelper{
                         root: ((options.ancestor == -1) ? null : options.region.GetElementAncestor(options.element, options.ancestor)),
                     };
                     
-                    options.region.GetIntersectionObserverManager().Add(options.element, IntersectionObserver.BuildOptions(intersectionOptions)).Start(() => {
-                        if (fetch){
+                    options.region.GetIntersectionObserverManager().Add(options.element, IntersectionObserver.BuildOptions(intersectionOptions)).Start((entry) => {
+                        if (entry.isIntersecting && fetch){
                             fetch.props.url = lazyUrl;
                             options.lazy = false;
                         }

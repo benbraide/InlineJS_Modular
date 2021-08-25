@@ -130,6 +130,10 @@ export class TextHelper{
             };
             
             region.GetIntersectionObserverManager().Add(element, IntersectionObserver.BuildOptions(intersectionOptions)).Start((entry, key) => {
+                if (!entry.isIntersecting){
+                    return;
+                }
+                
                 let myRegion = Region.Get(regionId);
                 if (myRegion){
                     myRegion.GetIntersectionObserverManager().RemoveByKey(key);
