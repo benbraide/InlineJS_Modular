@@ -49,7 +49,8 @@ export declare class CollectionGlobalHandler<EntryType> extends GlobalHandler {
     protected GetIdValue_(entry: EntryType): any;
     protected FindItem_(idValue: any): number;
     protected CreateItemProxy_(item: CollectionItem<EntryType>): any;
-    protected Reload_(): void;
+    protected Reload_(items?: Array<CollectionItem<EntryType>>): void;
+    protected OnLoad_(): void;
     protected WriteToDatabase_(): void;
     protected ReadFromDatabase_(callback: () => void): void;
     protected BuildPath_(path: string): string;
@@ -65,6 +66,6 @@ export declare class CollectionGlobalHandler<EntryType> extends GlobalHandler {
         quantity: number;
         entry: EntryType;
     }[];
-    Reload(): void;
+    Reload(items?: Array<CollectionItem<EntryType>>): void;
     GetOptions(): CollectionOptions<EntryType>;
 }

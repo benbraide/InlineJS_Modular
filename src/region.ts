@@ -544,7 +544,10 @@ export class Region implements IRegion{
                 scope.preserve = !(preserve = true);
             }
             
-            Array.from(scope.element.children).forEach(child => this.RemoveElement((child as HTMLElement), preserve));
+            if (!(element instanceof HTMLTemplateElement) && !(element instanceof SVGElement)){
+                Array.from(scope.element.children).forEach(child => this.RemoveElement((child as HTMLElement), preserve));
+            }
+            
             if (!preserve){//Delete scope
                 scope.trapInfoList.forEach((info) => {
                     if (!info.stopped){

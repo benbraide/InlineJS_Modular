@@ -482,7 +482,9 @@ export interface IPageGlobalHandler{
 }
 
 export interface IAuthGlobalHandler{
+    Refresh(data?: Record<string, any>): void;
     Check(): boolean;
+    User(key: string): any;
     BuildPath(path: string): string;
 }
 

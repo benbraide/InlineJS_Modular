@@ -129,7 +129,7 @@ export class CollectionGlobalHandler<EntryType> extends GlobalHandler{
                 }
 
                 if (prop === 'reload'){
-                    return () => this.Reload_();
+                    return (items?: Array<CollectionItem<EntryType>>) => this.Reload_(items);
                 }
 
                 if (prop === 'setOption'){
@@ -437,7 +437,7 @@ export class CollectionGlobalHandler<EntryType> extends GlobalHandler{
         }, ['quantity', (this.options_.entryName || 'entry')]);
     }
 
-    protected Reload_(){
+    protected Reload_(items?: Array<CollectionItem<EntryType>>){
         this.cached_ = {};
         if (this.count_ != 0){
             this.count_ = 0;
@@ -449,43 +449,20 @@ export class CollectionGlobalHandler<EntryType> extends GlobalHandler{
             this.proxies_ = [];
             GlobalHandler.region_.GetChanges().AddComposed('items', this.scopeId_);
         }
-        
-        let onLoad = () => {
-            if (0 < this.items_.length){
-                GlobalHandler.region_.GetChanges().AddComposed('items', this.scopeId_);
-                Object.entries(this.options_.caches).forEach(([key, value]) => {
-                    try{
-                        let evaluated = value(this.items_);
-                        if (!(key in this.cached_) || !Region.IsEqual(evaluated, this.cached_[key])){
-                            this.cached_[key] = evaluated;
-                            GlobalHandler.region_.GetChanges().AddComposed(key, `${this.scopeId_}.cached`);
-                        }
-                    }
-                    catch{}
-                });
 
-                this.count_ = this.items_.reduce((prev, item) => (item.quantity + prev), 0);
-                GlobalHandler.region_.GetChanges().AddComposed('count', this.scopeId_);
-            }
+        if (Array.isArray(items)){
+            this.items_ = items.map((item) => {
+                return <CollectionItem<EntryType>>{
+                    quantity: item.quantity,
+                    entry: item[this.options_.entryName || 'entry'],
+                };
+            });
+            
+            this.proxies_ = this.items_.map(item => this.CreateItemProxy_(item));
+            this.OnLoad_();
 
-            if (this.queuedRequests_){
-                let queued = this.queuedRequests_;
-
-                this.queuedRequests_ = null;
-                queued.forEach((request) => {
-                    try{
-                        request();
-                    }
-                    catch{}
-                });
-            }
-
-            if (this.options_.afterUpdate){
-                this.options_.afterUpdate(this.items_);
-            }
-
-            this.Recache_();
-        };
+            return;
+        }
         
         this.queuedRequests_ = new Array<() => void>();
         if (this.auth_ && this.auth_.Check()){
@@ -503,14 +480,51 @@ export class CollectionGlobalHandler<EntryType> extends GlobalHandler{
                     this.proxies_ = this.items_.map(item => this.CreateItemProxy_(item));
                 }
 
-                onLoad();
+                this.OnLoad_();
             }).catch(() => {
-                onLoad();
+                this.OnLoad_();
             });
         }
         else{//Use database
-            this.ReadFromDatabase_(onLoad);
+            this.ReadFromDatabase_(() => this.OnLoad_());
         }
+    }
+
+    protected OnLoad_(){
+        if (0 < this.items_.length){
+            GlobalHandler.region_.GetChanges().AddComposed('items', this.scopeId_);
+            Object.entries(this.options_.caches).forEach(([key, value]) => {
+                try{
+                    let evaluated = value(this.items_);
+                    if (!(key in this.cached_) || !Region.IsEqual(evaluated, this.cached_[key])){
+                        this.cached_[key] = evaluated;
+                        GlobalHandler.region_.GetChanges().AddComposed(key, `${this.scopeId_}.cached`);
+                    }
+                }
+                catch{}
+            });
+
+            this.count_ = this.items_.reduce((prev, item) => (item.quantity + prev), 0);
+            GlobalHandler.region_.GetChanges().AddComposed('count', this.scopeId_);
+        }
+
+        if (this.queuedRequests_){
+            let queued = this.queuedRequests_;
+
+            this.queuedRequests_ = null;
+            queued.forEach((request) => {
+                try{
+                    request();
+                }
+                catch{}
+            });
+        }
+
+        if (this.options_.afterUpdate){
+            this.options_.afterUpdate(this.items_);
+        }
+
+        this.Recache_();
     }
 
     protected WriteToDatabase_(){
@@ -598,8 +612,8 @@ export class CollectionGlobalHandler<EntryType> extends GlobalHandler{
         return this.Export_(withEntryInfo);
     }
 
-    public Reload(){
-        this.Reload_();
+    public Reload(items?: Array<CollectionItem<EntryType>>){
+        this.Reload_(items);
     }
 
     public GetOptions(){

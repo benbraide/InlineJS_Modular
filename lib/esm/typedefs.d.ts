@@ -426,7 +426,9 @@ export interface IPageGlobalHandler {
     SetNextPageData(data: Record<string, any>): void;
 }
 export interface IAuthGlobalHandler {
+    Refresh(data?: Record<string, any>): void;
     Check(): boolean;
+    User(key: string): any;
     BuildPath(path: string): string;
 }
 export interface IProduct {

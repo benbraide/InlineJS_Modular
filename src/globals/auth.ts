@@ -1,12 +1,35 @@
-import { IAuthGlobalHandler, IRouterGlobalHandler } from '../typedefs'
+import { DirectiveHandlerReturn, IAuthGlobalHandler, IDirective, IRegion, IRouterGlobalHandler } from '../typedefs'
 import { GlobalHandler } from './generic'
 import { Region } from '../region'
+import { ExtendedDirectiveHandler } from '../directives/extended/generic';
+
+export class AuthDirectiveHandler extends ExtendedDirectiveHandler{
+    public constructor(auth: AuthGlobalHandler){
+        super(auth.GetKey(), (region: IRegion, element: HTMLElement, directive: IDirective) => {
+            if (!directive.arg || !directive.arg.key){
+                return DirectiveHandlerReturn.Handled;
+            }
+
+            if (directive.arg.key === 'change' || ExtendedDirectiveHandler.IsEventRequest(directive.arg.key)){
+                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.change`);
+            }
+
+            if (directive.arg.key === 'auth' || directive.arg.key === 'guest'){
+                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.${directive.arg.key}`);
+            }
+
+            return DirectiveHandlerReturn.Handled;
+        });
+    }
+}
 
 export class AuthGlobalHandler extends GlobalHandler implements IAuthGlobalHandler{
+    private scopeId_: string;
     private userProxy_ = null;
 
     private origin_ = window.location.origin;
     private userInfo_: Record<string, any> = null;
+    private requestedKeys_ = new Array<string>();
 
     private paths_ = {
         register: 'auth/register',
@@ -17,30 +40,22 @@ export class AuthGlobalHandler extends GlobalHandler implements IAuthGlobalHandl
 
     public constructor(private router_: IRouterGlobalHandler, private prefix_ = '', initializeUser = true){
         super('auth', null, null, () => {
-            let fetchInfo = (data?: Record<string, any>) => {
-                if (!data){
-                    fetch(this.BuildPath_('user'), {
-                        method: 'GET',
-                        credentials: 'same-origin',
-                    }).then(response => response.json()).then((response) => {
-                        this.userInfo_ = ((response && response['ok']) ? response['data'] : null);
-                    });
-                }
-                else{//Use data
-                    this.userInfo_ = data;
-                }
-            };
-
+            Region.GetDirectiveManager().AddHandler(new AuthDirectiveHandler(this));
+            
             if (initializeUser){
-                fetchInfo();
+                this.Refresh();
             }
             
             this.proxy_ = Region.CreateProxy((prop) => {
                 if (prop === 'check'){
-                    return () => this.Check();
+                    return () => {
+                        GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.user`);
+                        return this.Check();
+                    };
                 }
 
                 if (prop === 'user'){
+                    GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.${prop}`);
                     return this.userProxy_;
                 }
 
@@ -65,7 +80,7 @@ export class AuthGlobalHandler extends GlobalHandler implements IAuthGlobalHandl
                 }
 
                 if (prop === 'refresh'){
-                    return fetchInfo;
+                    return (data?: Record<string, any>) => this.Refresh(data);
                 }
 
                 if (prop === 'prefix'){
@@ -85,10 +100,20 @@ export class AuthGlobalHandler extends GlobalHandler implements IAuthGlobalHandl
 
             this.userProxy_ = Region.CreateProxy((prop) => {
                 if (!Region.IsObject(this.userInfo_)){
+                    if (prop === 'hasRole'){
+                        this.requestedKeys_.push('roles', 'role');
+                        GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.user.roles`);
+                        GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.user.role`);
+                    }
+                    else{
+                        this.requestedKeys_.push(prop);
+                        GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.user.${prop}`);
+                    }
                     return;
                 }
                 
                 if (prop in this.userInfo_){
+                    GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.user.${prop}`);
                     return this.userInfo_[prop];
                 }
 
@@ -97,9 +122,11 @@ export class AuthGlobalHandler extends GlobalHandler implements IAuthGlobalHandl
                         let roles: Array<string> | string = null;
                         if ('roles' in this.userInfo_){
                             roles = this.userInfo_['roles'];
+                            GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.user.roles`);
                         }
                         else if ('role' in this.userInfo_){
                             roles = this.userInfo_['role'];
+                            GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.user.role`);
                         }
 
                         if (!roles){
@@ -110,15 +137,85 @@ export class AuthGlobalHandler extends GlobalHandler implements IAuthGlobalHandl
                     };
                 }
             }, ['hasRole']);
+
+            this.scopeId_ = GlobalHandler.region_.GenerateDirectiveScopeId(null, `_${this.key_}`);
         }, () => {
             this.userProxy_ = null;
             this.proxy_ = null;
             this.userInfo_ = null;
+            Region.GetDirectiveManager().RemoveHandlerByKey(this.key_);
         });
+    }
+
+    public Refresh(data?: Record<string, any>){
+        let alert = () => {
+            let isAuth = Region.IsObject(this.userInfo_);
+            
+            GlobalHandler.region_.GetChanges().AddComposed('user', this.scopeId_);
+            if (isAuth){
+                this.requestedKeys_.splice(0).forEach(key => GlobalHandler.region_.GetChanges().AddComposed(key, `${this.scopeId_}.user`));
+                window.dispatchEvent(new CustomEvent(`${this.key_}.auth`));
+            }
+            else{
+                window.dispatchEvent(new CustomEvent(`${this.key_}.guest`));
+            }
+
+            window.dispatchEvent(new CustomEvent(`${this.key_}.change`, {
+                detail: {
+                    loggedIn: isAuth,
+                },
+            }));
+        };
+        
+        if (!Region.IsObject(data)){
+            fetch(this.BuildPath_('user'), {
+                method: 'GET',
+                credentials: 'same-origin',
+            }).then(response => response.json()).then((response) => {
+                if (response && response['ok'] && Region.IsObject(response['data'])){
+                    this.userInfo_ = response['data'];
+                    alert();
+                }
+            });
+        }
+        else{//Use data
+            this.userInfo_ = data;
+            alert();
+        }
     }
 
     public Check(){
         return !! this.userInfo_;
+    }
+
+    public User(key: string){
+        if (!Region.IsObject(this.userInfo_)){
+            return null;
+        }
+
+        if (key in this.userInfo_){
+            return this.userInfo_[key];
+        }
+
+        if (key === 'hasRole'){
+            return (role: string) => {
+                let roles: Array<string> | string = null;
+                if ('roles' in this.userInfo_){
+                    roles = this.userInfo_['roles'];
+                }
+                else if ('role' in this.userInfo_){
+                    roles = this.userInfo_['role'];
+                }
+
+                if (!roles){
+                    return false;
+                }
+
+                return (Array.isArray(roles) ? roles.includes(role) : (roles === role));
+            };
+        }
+
+        return null;
     }
 
     public BuildPath(path: string){

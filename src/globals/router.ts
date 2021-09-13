@@ -39,8 +39,8 @@ export class RouterDirectiveHandler extends ExtendedDirectiveHandler{
                 return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.load`);
             }
 
-            if (directive.arg.key === 'reload'){
-                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.reload`);
+            if (directive.arg.key === 'reload' || directive.arg.key === 'entry'){
+                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.${directive.arg.key}`);
             }
 
             return DirectiveHandlerReturn.Handled;
@@ -383,11 +383,11 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
             Region.GetDirectiveManager().AddHandler(new MountDirectiveHandler(this, this.mountInfo_));
 
             window.addEventListener('popstate', this.onEvent_);
-            Region.AddPostProcessCallback(() => {
-                this.Load_(this.BuildPath(this.url_));
-            }, true);
-
             this.proxy_ = Region.CreateProxy((prop) => {
+                if (prop === 'doMount'){
+                    return () => this.Mount();
+                }
+                
                 if (prop === 'active'){
                     GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.${prop}`);
                     return this.active_;
@@ -423,7 +423,7 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
                 if (prop === 'removeOnEntry'){
                     return (handler: (entered?: boolean) => void) => this.entryCallbacks_.splice(this.entryCallbacks_.findIndex(item => (item === handler)), 1);
                 }
-            }, ['active', 'page', 'title', 'url', 'mount', 'register', 'addOnEntry', 'removeOnEntry'], (prop, value) => {
+            }, ['doMount', 'active', 'page', 'title', 'url', 'mount', 'register', 'addOnEntry', 'removeOnEntry'], (prop, value) => {
                 if (typeof prop !== 'string'){
                     return true;
                 }
@@ -468,6 +468,10 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
 
         this.url_ = window.location.href;
         this.ajaxPrefix_ = this.ProcessUrl(this.ajaxPrefix_);
+    }
+
+    public Mount(){
+        this.Load_(this.BuildPath(this.url_));
     }
 
     public Register(page: PageOptions): number{
@@ -638,6 +642,12 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
                 }
                 catch{}
             });
+
+            window.dispatchEvent(new CustomEvent(`${this.key_}.entry`, {
+                detail: {
+                    active: state,
+                },
+            }));
         }
     }
 

@@ -8,8 +8,8 @@ export class Processor implements IProcessor{
             return;
         }
 
-        let isTemplate = (element.tagName == 'TEMPLATE');
-        if (!isTemplate && options?.checkTemplate && element.closest('template')){//Inside template -- ignore
+        let tagName = element.tagName.toUpperCase(), isTemplate = (tagName === 'TEMPLATE' || tagName === 'SVG');
+        if (!isTemplate && options?.checkTemplate && (element.closest('template') || element.closest('svg'))){//Inside template -- ignore
             return;
         }
 
@@ -26,8 +26,8 @@ export class Processor implements IProcessor{
             return DirectiveHandlerReturn.Nil;
         }
 
-        let isTemplate = (element.tagName == 'TEMPLATE');
-        if (!isTemplate && options?.checkTemplate && element.closest('template')){//Inside template -- ignore
+        let tagName = element.tagName.toUpperCase(), isTemplate = (tagName === 'TEMPLATE' || tagName === 'SVG');
+        if (!isTemplate && options?.checkTemplate && (element.closest('template') || element.closest('svg'))){//Inside template -- ignore
             return DirectiveHandlerReturn.Nil;
         }
         

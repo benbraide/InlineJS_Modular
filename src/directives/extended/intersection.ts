@@ -11,11 +11,25 @@ export class IntersectionDirectiveHandler extends ExtendedDirectiveHandler{
                 return response;
             }
 
-            let options = ExtendedDirectiveHandler.Evaluate(region, element, directive.value), state = {
+            let intersectionOptions = ExtendedDirectiveHandler.Evaluate(region, element, directive.value), state = {
                 intersect: false,
                 visible: false,
                 ratio: 0,
             };
+
+            let options = {
+                once: false,
+                in: false,
+                out: false,
+                visible: false,
+                hidden: false,
+            };
+
+            directive.arg.options.forEach((option) => {
+                if (option in options){
+                    options[option] = true;
+                }
+            });
 
             let regionId = region.GetId(), scopeId = this.GenerateScopeId_(region), setState = (key: string, value: boolean | number) => {
                 if (value == state[key]){
@@ -32,13 +46,29 @@ export class IntersectionDirectiveHandler extends ExtendedDirectiveHandler{
                     element.dispatchEvent(new CustomEvent(`${this.key_}.${key}`, {
                         detail: detail,
                     }));
+
+                    if ((options.in && !value) || (options.out && value)){
+                        return;
+                    }
+                    
                     element.dispatchEvent(new CustomEvent(`${this.key_}.${value ? 'in' : 'out'}`));
+                    if (options.once){
+                        Region.Get(regionId).GetIntersectionObserverManager().RemoveByKey(intersectionKey);
+                    }
                 }
                 else if (key === 'visible'){
-                    element.dispatchEvent(new CustomEvent(`${this.key_}.${value ? 'visible' : 'hidden'}`));
                     element.dispatchEvent(new CustomEvent(`${this.key_}.visibility`, {
                         detail: detail,
                     }));
+
+                    if ((options.visible && !value) || (options.hidden && value)){
+                        return;
+                    }
+
+                    element.dispatchEvent(new CustomEvent(`${this.key_}.${value ? 'visible' : 'hidden'}`));
+                    if (options.once){
+                        Region.Get(regionId).GetIntersectionObserverManager().RemoveByKey(intersectionKey);
+                    }
                 }
                 else{//Not a visibility change
                     element.dispatchEvent(new CustomEvent(`${this.key_}.${key}`, {
@@ -47,15 +77,8 @@ export class IntersectionDirectiveHandler extends ExtendedDirectiveHandler{
                 }
             };
 
-            let isOnce = (directive.arg.options.includes('once') || (Region.IsObject(options) && options['once']));
-            region.GetIntersectionObserverManager().Add(element, IntersectionObserver.BuildOptions(options)).Start((entry, key) => {
-                if (isOnce){
-                    let myRegion = Region.Get(regionId);
-                    if (myRegion){
-                        myRegion.GetIntersectionObserverManager().RemoveByKey(key);
-                    }
-                }
-
+            let intersection = region.GetIntersectionObserverManager().Add(element, IntersectionObserver.BuildOptions(intersectionOptions));
+            intersection.Start((entry) => {
                 if (entry.isIntersecting){
                     setState('intersect', true);
                     setState('ratio', entry.intersectionRatio);
@@ -68,12 +91,15 @@ export class IntersectionDirectiveHandler extends ExtendedDirectiveHandler{
                 }
             });
 
-            region.AddElement(element, true).locals[`\$${this.key_}`] = ExtendedDirectiveHandler.CreateProxy((prop) =>{
+            let intersectionKey = intersection.GetKey(), elementScope = region.AddElement(element, true);
+            elementScope.locals[`\$${this.key_}`] = ExtendedDirectiveHandler.CreateProxy((prop) =>{
                 if (prop in state){
                     Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
                     return state[prop];
                 }
             }, Object.keys(state));
+
+            elementScope.uninitCallbacks.push(() => Region.Get(regionId).GetIntersectionObserverManager().RemoveByKey(intersectionKey));
             
             return DirectiveHandlerReturn.Handled;
         });

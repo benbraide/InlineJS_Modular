@@ -46,6 +46,13 @@ export class XHRHelper{
                     fetch.Reload();
                 }
             },
+            stop: () => {
+                fetch.EndWatch();
+            },
+            unbind: () => {
+                methods.stop();
+                fetch = null;
+            },
         };
 
         let setState = (key: string, value: any) => {
@@ -147,7 +154,7 @@ export class XHRHelper{
             let elementScope = options.region.AddElement(target, true), lazyUrl: string = null;
             
             fetch.Watch(options.region);
-            elementScope.locals[`\$${options.key}`] = fetch.props;
+            elementScope.locals[`$${options.key}`] = fetch.props;
             
             elementScope.uninitCallbacks.push(() => {
                 fetch.EndWatch();

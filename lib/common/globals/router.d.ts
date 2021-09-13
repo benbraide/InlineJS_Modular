@@ -72,6 +72,7 @@ export declare class RouterGlobalHandler extends GlobalHandler implements IRoute
     private currentQuery_;
     private currentTitle_;
     constructor(middlewares_?: IMiddleware[], ajaxPrefix_?: string, mountElementType?: string);
+    Mount(): void;
     Register(page: PageOptions): number;
     Unregister(id: number): void;
     Goto(target: string | PathInfo | BackPath, shouldReload?: boolean | (() => boolean)): void;
