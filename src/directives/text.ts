@@ -7,8 +7,10 @@ export class TextHelper{
     public static Bind(region: IRegion, element: HTMLElement, directive: IDirective, isHtml: boolean, callback?: () => boolean, allowAnimation?: boolean){
         let onChange: (value: any) => void, regionId = region.GetId(), options = {
             ancestor: -1,
-            float: false,
             lazy: false,
+            float: false,
+            fixed: false,
+            fixedPoint: 0,
         };
 
         if (isHtml){
@@ -71,6 +73,9 @@ export class TextHelper{
             }
             else if (typeof options[option] === 'boolean'){
                 options[option] = true;
+                if (option === 'fixed'){
+                    options.fixedPoint = (parseInt(directive.arg.options[index + 1]) || 0);
+                }
             }
         });
 
@@ -123,6 +128,16 @@ export class TextHelper{
             return value;
         };
 
+        let lastValue = null, step = (value: any, fraction: number) => {
+            lastValue = stepValue(value, lastValue, fraction);
+            if (typeof lastValue === 'number' && options.float && options.fixed){
+                onChange((Math.round(lastValue * 100) / 100).toFixed(options.fixedPoint));
+            }
+            else{
+                onChange(lastValue);
+            }
+        };
+
         let animator = region.ParseAnimation(directive.arg.options, element, (allowAnimation && directive.arg.key === 'animate')), active = false;
         if (options.lazy && !callback){
             let intersectionOptions = {
@@ -140,26 +155,16 @@ export class TextHelper{
                 }
                 
                 active = true;
-                animator.Run(true, (fraction) => onChange(stepValue(lastValue, null, fraction)));
+                animator.Run(true, fraction => step(DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value), fraction));
             });
         }
         else{//Immediate
             active = true;
         }
 
-        let lastValue = null, firstEntry = true;
         region.GetState().TrapGetAccess(() => {
-            if (!callback || callback()){
-                let value = DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value);
-                if (firstEntry || !Region.IsEqual(value, lastValue)){
-                    if (active){
-                        let savedLastValue = lastValue;
-                        animator.Run(true, (fraction) => onChange(stepValue(value, savedLastValue, fraction)));
-                    }
-                    lastValue = value;
-                }
-
-                firstEntry = false;
+            if (active && (!callback || callback())){
+                animator.Run(true, fraction => step(DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value), fraction));
             }
         }, true, element);
     }

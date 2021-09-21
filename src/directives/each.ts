@@ -175,6 +175,22 @@ export class EachDirectiveHandler extends DirectiveHandler{
             };
 
             let arrayChangeHandler = (myRegion: IRegion, change: IChange, isOriginal: boolean) => {
+                let removeRange = (myRegion: IRegion, index: number, count: number) => {
+                    if (count <= 0){
+                        return false;
+                    }
+                    
+                    let max = ((options.clones as Array<EachCloneInfo>).length - (getTarget(DirectiveHandler.Evaluate(myRegion, element, expression)) as Array<any>).length);
+                    if (max <= 0){//Nothing to remove
+                        return false;
+                    }
+
+                    count = ((max < count) ? max : count);
+                    (options.clones as Array<EachCloneInfo>).splice(index, count).forEach(myInfo => ControlHelper.RemoveItem(myInfo.itemInfo, info));
+
+                    return count;
+                };
+                
                 if (isOriginal){
                     if (change.path === `${options.path}.unshift.${change.prop}`){
                         let count = (Number.parseInt(change.prop) || 0);
@@ -188,11 +204,13 @@ export class EachDirectiveHandler extends DirectiveHandler{
                     }
                     else if (change.path === `${options.path}.shift.${change.prop}`){
                         let count = (Number.parseInt(change.prop) || 0);
+                        if (!removeRange(myRegion, 0, count)){
+                            return;
+                        }
                         
-                        options.count -= count;
+                        options.count = (options.clones as Array<EachCloneInfo>).length;
                         addSizeChange(myRegion);
 
-                        (options.clones as Array<EachCloneInfo>).splice(0, count).forEach(myInfo => ControlHelper.RemoveItem(myInfo.itemInfo, info));
                         (options.clones as Array<EachCloneInfo>).forEach((cloneInfo) => {
                             let myScope = myRegion.GetElementScope(cloneInfo.itemInfo.clone);
                             if (myScope){
@@ -207,14 +225,13 @@ export class EachDirectiveHandler extends DirectiveHandler{
 
                         let index = (Number.parseInt(parts[0]) || 0);
                         let itemsCount = (Number.parseInt(parts[2]) || 0);
-                        let removedClones = (options.clones as Array<EachCloneInfo>).splice(index, (Number.parseInt(parts[1]) || 0));
-
-                        removedClones.forEach(myInfo => ControlHelper.RemoveItem(myInfo.itemInfo, info));
+                        
+                        let removedCount = removeRange(myRegion, index, (Number.parseInt(parts[1]) || 0));
                         for (let i = index; i < (itemsCount + index); ++i){
                             append(myRegion, i);
                         }
                         
-                        options.count += (itemsCount - removedClones.length);
+                        options.count = (options.clones as Array<EachCloneInfo>).length;
                         addSizeChange(myRegion);
 
                         for (let i = (index + itemsCount); i < (options.clones as Array<EachCloneInfo>).length; ++i){
@@ -223,7 +240,7 @@ export class EachDirectiveHandler extends DirectiveHandler{
                                 ProxyHelper.AddChanges(myRegion.GetChanges(), 'set', `${scopeId}.${myScope.key}.index`, 'index');
                             }
                             
-                            (cloneInfo.key as number) -= removedClones.length;
+                            (cloneInfo.key as number) -= ((removedCount === false) ? 0 : removedCount);
                         }
                     }
                     else if (change.path === `${options.path}.push.${change.prop}`){

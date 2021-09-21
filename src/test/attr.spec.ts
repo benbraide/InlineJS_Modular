@@ -145,9 +145,9 @@ describe('x-attr directive', () => {
                 <input x-attr:required="isSet"></input>
                 <input x-attr:readonly="isSet"></input>
                 <details x-attr:open="isSet"></details>
-                <select x-attr:multiple="isSet"></select>
-                <option x-attr:selected="isSet"></option>
-                <textarea x-attr:autofocus="isSet"></textarea>
+                <select x-attr:multiple="isSet">
+                    <option x-attr:selected="isSet"></option>
+                </select>
                 <dl x-attr:itemscope="isSet"></dl>
                 <form x-attr:novalidate="isSet"></form>
                 <iframe
@@ -183,7 +183,6 @@ describe('x-attr directive', () => {
         expect(document.querySelectorAll('details')[0].open).equal(true);
         expect(document.querySelectorAll('option')[0].selected).equal(true);
         expect(document.querySelectorAll('select')[0].multiple).equal(true);
-        expect(document.querySelectorAll('textarea')[0].autofocus).equal(true);
         expect(document.querySelectorAll('dl')[0].getAttribute('itemscope')).equal('itemscope');
         expect(document.querySelectorAll('form')[0].getAttribute('novalidate')).equal('novalidate');
         expect(document.querySelectorAll('iframe')[0].getAttribute('allowfullscreen')).equal('allowfullscreen');
@@ -280,19 +279,5 @@ describe('x-attr directive', () => {
         bootstrap.Attach();
     
         expect(document.querySelector('svg').getAttribute('viewBox')).equal('0 0 42 42');
-    });
-
-    it('names can contain numbers', () => {
-        document.body.innerHTML = `
-            <svg x-data>
-                <line x1="1" y1="2" :x2="3" x-attr:y2="4" />
-            </svg>
-        `;
-    
-        let bootstrap = new Bootstrap();
-        bootstrap.Attach();
-    
-        expect(document.querySelector('line').getAttribute('x2')).equal('3');
-        expect(document.querySelector('line').getAttribute('y2')).equal('4');
     });
 });

@@ -544,7 +544,7 @@ export class Region implements IRegion{
                 scope.preserve = !(preserve = true);
             }
             
-            if (!(element instanceof HTMLTemplateElement) && !(element instanceof SVGElement)){
+            if (!(scope.element instanceof HTMLTemplateElement) && scope.element.tagName.toLowerCase() !== 'svg'){
                 Array.from(scope.element.children).forEach(child => this.RemoveElement((child as HTMLElement), preserve));
             }
             
@@ -557,28 +557,27 @@ export class Region implements IRegion{
                 });
 
                 delete this.elementScopes_[scope.key];
+                if (scope.element === this.rootElement_){//Remove from map
+                    Region.hooks_.forEach((hook) => {
+                        try{
+                            hook(this, false);
+                        }
+                        catch{}
+                    });
+        
+                    this.AddNextTickCallback(() => {//Wait for changes to finalize
+                        Region.evaluator_.RemoveProxyCache(this.id_);
+                        if (this.componentKey_ && this.componentKey_ in Region.components_){
+                            delete Region.components_[this.componentKey_];
+                        }
+        
+                        delete Region.entries_[this.id_];
+                    });
+                }
             }
         }
         else if (typeof element !== 'string'){
             Array.from(element.children).forEach(child => this.RemoveElement((child as HTMLElement), preserve));
-        }
-        
-        if (!preserve && element === this.rootElement_){//Remove from map
-            Region.hooks_.forEach((hook) => {
-                try{
-                    hook(this, false);
-                }
-                catch{}
-            });
-
-            this.AddNextTickCallback(() => {//Wait for changes to finalize
-                Region.evaluator_.RemoveProxyCache(this.id_);
-                if (this.componentKey_ && this.componentKey_ in Region.components_){
-                    delete Region.components_[this.componentKey_];
-                }
-
-                delete Region.entries_[this.id_];
-            });
         }
     }
 

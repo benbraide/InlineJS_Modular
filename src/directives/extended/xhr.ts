@@ -50,7 +50,7 @@ export class XHRHelper{
                 fetch.EndWatch();
             },
             unbind: () => {
-                methods.stop();
+                fetch.Destroy();
                 fetch = null;
             },
         };
@@ -62,7 +62,7 @@ export class XHRHelper{
             }
         };
         
-        let target = (options.expressionElement || options.element);
+        let target = (options.element || options.expressionElement);
         let fetch = new Fetch(null, options.element, {
             onBeforeRequest: () => {
                 setState('active', true);
@@ -157,7 +157,7 @@ export class XHRHelper{
             elementScope.locals[`$${options.key}`] = fetch.props;
             
             elementScope.uninitCallbacks.push(() => {
-                fetch.EndWatch();
+                methods.unbind();
             });
             
             if (options.lazy){
@@ -252,6 +252,7 @@ export class JSONDirectiveHandler extends ExtendedDirectiveHandler{
             }
 
             let options = {
+                raw: false,
                 array: false,
                 number: false,
             };
@@ -270,6 +271,10 @@ export class JSONDirectiveHandler extends ExtendedDirectiveHandler{
                 fetchMode: XHRHelper.ExtractFetchMode(directive.arg.options),
                 formatData: (data, mode) => {
                     if (!data){
+                        if (options.raw){
+                            return '';
+                        }
+                        
                         if (options.array){
                             return [];
                         }
@@ -281,6 +286,10 @@ export class JSONDirectiveHandler extends ExtendedDirectiveHandler{
                         return ((mode === FetchMode.Replace) ? {} : []);
                     }
 
+                    if (options.raw){
+                        return Region.ToString(data);
+                    }
+
                     if (options.number){
                         return (parseFloat(data) || 0);
                     }
@@ -290,7 +299,7 @@ export class JSONDirectiveHandler extends ExtendedDirectiveHandler{
                     }
                     catch{}
 
-                    return ((mode === FetchMode.Replace) ? {} : []);
+                    return ((!options.array && mode === FetchMode.Replace) ? {} : []);
                 },
                 setData: (state, value, mode, regionId, scopeId) => {
                     if (mode !== FetchMode.Replace){//Add to array

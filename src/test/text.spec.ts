@@ -47,21 +47,6 @@ describe('x-text directive', () => {
         await waitFor(() => { expect(document.querySelector('span').textContent).equal('baz') });
     });
 
-    it('should work on SVG elements', async () => {
-        document.body.innerHTML = `
-            <div x-data="{ foo: 'bar' }">
-                <svg>
-                    <text x-text="foo"></text>
-                </svg>
-            </div>
-        `;
-    
-        let bootstrap = new Bootstrap();
-        bootstrap.Attach();
-    
-        await waitFor(() => { expect(document.querySelector('text').textContent).equal('bar') });
-    });
-
     it('should work on INPUT elements', async () => {
         document.body.innerHTML = `
             <div x-data="{ foo: 'bar' }">

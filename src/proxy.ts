@@ -371,6 +371,10 @@ export class ChildProxy implements IProxy{
                                 return tempProxy['splice'](start, deleteCount, ...items);
                             }
 
+                            if (!deleteCount && deleteCount !== 0){
+                                deleteCount = ((target as Array<any>).length - start);
+                            }
+
                             let path = (parentPath ? `${parentPath}.${name}.splice` : `${name}.splice`);
                             ProxyHelper.AddChanges(region.GetChanges(), 'set', `${path}.${start}.${deleteCount}.${items.length}`, `${start}.${deleteCount}.${items.length}`);
 

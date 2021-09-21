@@ -435,6 +435,7 @@ export interface IFetch{
     Get(region?: IRegion): Promise<any>;
     Watch(region?: IRegion, get?: boolean): void;
     EndWatch(): void;
+    Destroy(): void;
 }
 
 export interface Point{

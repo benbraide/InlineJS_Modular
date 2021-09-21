@@ -36,6 +36,7 @@ export declare class Fetch implements IFetch {
     Get(region?: IRegion): Promise<any>;
     Watch(region?: IRegion, get?: boolean): void;
     EndWatch(): void;
+    Destroy(): void;
     private EmptyMount_;
     private Get_;
     private GetList_;

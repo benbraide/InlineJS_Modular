@@ -141,7 +141,7 @@ export class Fetch implements IFetch{
             else if (this.mount_ instanceof HTMLImageElement || this.mount_ instanceof HTMLIFrameElement){
                 let onEvent = () => {
                     this.mount_.removeEventListener('load', onEvent);
-                    if (this.handlers_.onLoad){
+                    if (this.handlers_ && this.handlers_.onLoad){
                         this.handlers_.onLoad();
                     }
                 };
@@ -156,7 +156,7 @@ export class Fetch implements IFetch{
                 });
             }
         }
-        else if (this.handlers_.onLoad){
+        else if (this.handlers_ && this.handlers_.onLoad){
             this.Get_(false);
         }
         else{//No load handler
@@ -169,7 +169,7 @@ export class Fetch implements IFetch{
     }
 
     public Watch(region?: IRegion, get = true): void{
-        if (this.onPropSet_){//Already watching
+        if (!this.handlers_ || this.onPropSet_){//Already watching
             return;
         }
 
@@ -187,6 +187,12 @@ export class Fetch implements IFetch{
 
     public EndWatch(): void{
         this.onPropSet_ = null;
+    }
+
+    public Destroy(){
+        this.EndWatch();
+        this.props = null;
+        this.handlers_ = null;
     }
 
     private EmptyMount_(){
@@ -208,11 +214,15 @@ export class Fetch implements IFetch{
     }
 
     private Get_(tryJson: boolean, onLoad?: (response: any) => void, onError?: (err?: any) => void){
+        if (!this.props){
+            return;
+        }
+        
         let request = new XMLHttpRequest(), checkpoint = (this.noOverlap_ ? ++this.overlapCheckpoint_ : null), onProgress = this.handlers_.onProgress;
         if (onProgress){//Bind on progress
             request.addEventListener('progress', (e) => {
                 try{
-                    if ((checkpoint === null || checkpoint == this.overlapCheckpoint_) && e.lengthComputable){
+                    if (this.props && (checkpoint === null || checkpoint == this.overlapCheckpoint_) && e.lengthComputable){
                         onProgress((e.loaded / e.total) * 100);
                     }
                 }
@@ -221,7 +231,7 @@ export class Fetch implements IFetch{
         }
 
         request.addEventListener('error', () => {
-            if (checkpoint !== null && checkpoint != this.overlapCheckpoint_){
+            if (!this.props || (checkpoint !== null && checkpoint != this.overlapCheckpoint_)){
                 return;
             }
             
@@ -246,7 +256,7 @@ export class Fetch implements IFetch{
         });
 
         request.addEventListener('load', () => {
-            if (checkpoint !== null && checkpoint != this.overlapCheckpoint_){
+            if (!this.props || (checkpoint !== null && checkpoint != this.overlapCheckpoint_)){
                 return;
             }
             
@@ -282,7 +292,7 @@ export class Fetch implements IFetch{
         });
 
         try{
-            if (this.handlers_.onBeforeRequest){
+            if (this.handlers_ && this.handlers_.onBeforeRequest){
                 this.handlers_.onBeforeRequest(this.url_, this.mode_);
             }
         }
@@ -312,7 +322,7 @@ export class Fetch implements IFetch{
     }
 
     private SetProp_(prop: string, value: any, force = false){
-        let response = (this.handlers_.onBeforePropSet ? (this.handlers_.onBeforePropSet(prop, value) ? true : false) : null);
+        let response = ((this.handlers_ && this.handlers_.onBeforePropSet) ? !!this.handlers_.onBeforePropSet(prop, value) : null);
         if (response === false){
             return false;
         }
@@ -369,7 +379,7 @@ export class Fetch implements IFetch{
                 this.AlertAccess_(prop, false, mode);
             }
         }
-        else if (response && this.handlers_.onPropSet){
+        else if (response && this.handlers_ && this.handlers_.onPropSet){
             try{
                 this.handlers_.onPropSet(prop, value);
             }
@@ -381,7 +391,7 @@ export class Fetch implements IFetch{
 
     private AlertAccess_(prop: string, isGet: boolean, value?: any){
         if (!isGet){
-            if (this.handlers_.onPropSet){
+            if (this.handlers_ && this.handlers_.onPropSet){
                 try{
                     this.handlers_.onPropSet(prop, value);
                 }
@@ -392,7 +402,7 @@ export class Fetch implements IFetch{
                 this.onPropSet_(prop);
             }
         }
-        else if (this.handlers_.onPropGet){
+        else if (this.handlers_ && this.handlers_.onPropGet){
             try{
                 this.handlers_.onPropGet(prop);
             }
