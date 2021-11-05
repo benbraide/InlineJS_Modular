@@ -5,7 +5,7 @@ import { Fetch } from '../../utilities/fetch';
 
 export interface IFormMiddleware{
     GetKey(): string;
-    Handle(region?: IRegion, element?: HTMLElement): void | boolean | Promise<boolean>;
+    Handle(region?: IRegion, element?: HTMLElement): void | boolean | Promise<void | boolean>;
 }
 
 export class ConfirmFormMiddleware implements IFormMiddleware{
@@ -13,7 +13,7 @@ export class ConfirmFormMiddleware implements IFormMiddleware{
         return 'confirm';
     }
 
-    Handle(): void | boolean | Promise<boolean>{
+    Handle(): void | boolean | Promise<void | boolean>{
         return new Promise((resolve) => {
             Region.GetAlertHandler().Confirm({}, () => resolve(true), () => resolve(false));
         });
@@ -182,9 +182,9 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 }
 
                 if (prop === 'submit'){
-                    return (runMiddlewares = true) => {
-                        if (runMiddlewares){
-                            runMiddleware(handleEvent);
+                    return (shouldRunMiddlewares = true) => {
+                        if (shouldRunMiddlewares){
+                            runMiddlewares(handleEvent);
                         }
                         else{//Skip middlewares
                             handleEvent();
@@ -368,21 +368,20 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 });
             };
 
-            let runMiddleware = (callback: () => void, index = 0) => {
-                if (index < middlewares.length){
-                    let result = middlewares[index].Handle(Region.Get(regionId), element);
-                    if (result instanceof Promise){
-                        result.then((value) => {
-                            if (value){//Accepted
-                                runMiddleware(callback, (index + 1));
-                            }
-                        });
+            let runMiddlewares = async (callback: () => void) => {
+                let myRegion = Region.Get(regionId);
+                for (let middleware of middlewares){
+                    try{
+                        let result = middleware.Handle(myRegion, element);
+                        let status = ((result instanceof Promise) ? await result : result);
+                        if (status === false){//Rejected
+                            return;
+                        }
                     }
-                    else if (result !== false){
-                        runMiddleware(callback, (index + 1));
-                    }
+                    catch{}
                 }
-                else{//Done running middlewares
+
+                if (callback){
                     callback();
                 }
             };
@@ -390,7 +389,10 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
             let onEvent = (e: Event) => {
                 e.preventDefault();
                 e.stopPropagation();
-                runMiddleware(handleEvent);
+
+                if (!active){
+                    runMiddlewares(handleEvent);
+                }
             };
 
             element.addEventListener(eventName, onEvent);

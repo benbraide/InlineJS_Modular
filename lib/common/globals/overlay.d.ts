@@ -11,7 +11,8 @@ export declare class OverlayGlobalHandler extends GlobalHandler {
     private clickHandlers_;
     private resizeHandler_;
     private state_;
-    constructor(updateBody_?: boolean, padBody_?: boolean);
+    private styles_;
+    constructor(updateBody_?: boolean, padBody_?: boolean, styles?: Record<string, string>);
     SetZIndex(value: number): void;
     OffsetCount(offset: number): void;
     AddClickHandler(handler: (e?: Event) => void): void;

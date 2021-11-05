@@ -39,7 +39,7 @@ export class RouterDirectiveHandler extends ExtendedDirectiveHandler{
                 return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.load`);
             }
 
-            if (directive.arg.key === 'reload' || directive.arg.key === 'entry'){
+            if (directive.arg.key === 'reload' || directive.arg.key === 'entry' || directive.arg.key === 'in' || directive.arg.key === 'out'){
                 return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.${directive.arg.key}`);
             }
 
@@ -648,6 +648,13 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
                     active: state,
                 },
             }));
+
+            if (state){
+                window.dispatchEvent(new CustomEvent(`${this.key_}.in`));
+            }
+            else{
+                window.dispatchEvent(new CustomEvent(`${this.key_}.out`));
+            }
         }
     }
 

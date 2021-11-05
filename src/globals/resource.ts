@@ -1,12 +1,106 @@
+import { DirectiveHandlerReturn, IDirective, IRegion } from "../typedefs";
 import { Region } from "../region";
 import { GlobalHandler } from "./generic";
+import { DirectiveHandler } from "../directives/generic";
+import { ControlHelper, ControlItemInfo } from '../directives/control'
+import { ExtendedDirectiveHandler } from '../directives/extended/generic'
 import { Resource, ResourceOptions, ResourceHandlerType, ResourceMixedItemInfo } from "../utilities/resource";
+
+export class ResourceDirectiveHandler extends ExtendedDirectiveHandler{
+    public constructor(resource: ResourceGlobalHandler){
+        super(resource.GetKey(), (region: IRegion, element: HTMLElement, directive: IDirective) => {
+            let itemInfo: ControlItemInfo = null, info = ControlHelper.Init(region, element, directive.arg.options, false, () => {
+                if (itemInfo){
+                    ControlHelper.RemoveItem(itemInfo, info);
+                }
+            }, Region.GetConfig().GetDirectiveName(this.key_));
+
+            let scope = region.GetElementScope(info.template);
+            if (!scope){
+                region.GetState().ReportError(`Failed to bind '${Region.GetConfig().GetDirectiveName(this.key_)}' to element`);
+                return DirectiveHandlerReturn.Handled;
+            }
+
+            let options = {
+                style: false,
+                script: false,
+                mixed: false,
+                data: false,
+                json: false,
+                text: false,
+                concurrent: false,
+            };
+
+            directive.arg.options.forEach((option) => {
+                if (option in options){
+                    options[option] = true;
+                }
+            });
+
+            let ifConditionChange: Array<(isTrue: boolean) => void>, listen = () => {
+                let myRegion = Region.Get(info.regionId);
+                if (!myRegion){
+                    return;
+                }
+                
+                let onLoad = (data: any) => {
+                    let myRegion = Region.Get(info.regionId);
+                    if (!myRegion){
+                        return;
+                    }
+                    
+                    ifConditionChange.forEach((callback) => {
+                        try{
+                            callback(true);
+                        }
+                        catch{}
+                    });
+
+                    itemInfo = ControlHelper.InsertItem(myRegion, info, (myItemInfo) => {
+                        let scope = myRegion.GetElementScope(info.template), cloneScope = myRegion.GetElementScope(myItemInfo.clone);
+                        Object.entries(scope.locals).forEach(([key, item]) => {//Forward locals
+                            cloneScope.locals[key] = item;
+                        });
+
+                        cloneScope.locals['data'] = data;
+                    });
+                };
+
+                if (options.style){
+                    resource.GetStyle(DirectiveHandler.Evaluate(myRegion, element, directive.value), onLoad, options.concurrent);
+                }
+                else if (options.script){
+                    resource.GetScript(DirectiveHandler.Evaluate(myRegion, element, directive.value), onLoad, options.concurrent);
+                }
+                else if (options.mixed){
+                    resource.GetMixed(DirectiveHandler.Evaluate(myRegion, element, directive.value), onLoad, options.concurrent);
+                }
+                else{//Data
+                    resource.GetData(DirectiveHandler.Evaluate(myRegion, element, directive.value), onLoad, options.concurrent, options.json);
+                }
+            };
+
+            if (scope.ifConditionChange && scope.ifConditionChange.length > 0){
+                ifConditionChange = scope.ifConditionChange;
+                listen();
+            }
+            else{//Initialize if condition change list
+                ifConditionChange = (scope.ifConditionChange = new Array<(isTrue: boolean) => void>());
+                scope.postProcessCallbacks.push(listen);
+            }
+            
+            return DirectiveHandlerReturn.Handled;
+        });
+    }
+}
 
 export class ResourceGlobalHandler extends GlobalHandler{
     private resource_ = new Resource();
     
     public constructor(){
         super('resource', null, null, () => {
+            Region.GetDirectiveManager().AddHandler(new ResourceDirectiveHandler(this));
+            
             this.proxy_ = Region.CreateProxy((prop) => {
                 if (prop === 'style'){
                     return (url: string | Array<string>, handler: ResourceHandlerType, concurrent = true, attributes?: Record<string, string>) => {
@@ -34,7 +128,12 @@ export class ResourceGlobalHandler extends GlobalHandler{
             }, ['style', 'script', 'mixed', 'data']);
         }, () => {
             this.proxy_ = null;
+            Region.GetDirectiveManager().RemoveHandlerByKey(this.key_);
         });
+    }
+
+    public GetHandle(){
+        return this.resource_;
     }
 
     public ProcessUrl(url: string){

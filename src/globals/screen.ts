@@ -1,7 +1,12 @@
-import { Point, Size, NamedDirection, IDirective, DirectiveHandlerReturn, IRegion } from '../typedefs'
+import { Point, Size, NamedDirection, IDirective, DirectiveHandlerReturn, IRegion, IAnimation } from '../typedefs'
 import { ExtendedDirectiveHandler } from '../directives/extended/generic'
 import { GlobalHandler } from './generic'
 import { Region } from '../region'
+
+export interface ScreenCheckpoints{
+    name: string;
+    value: number;
+}
 
 interface ScreenProperties{
     size: Size;
@@ -66,7 +71,7 @@ export class ScreenGlobalHandler extends GlobalHandler{
     private resizeEventHandler_: () => void = null;
     private scrollEventHandler_: () => void = null;
     
-    public constructor(private animator_: any = null, private debounce_ = 250){
+    public constructor(private checkpoints_: Array<ScreenCheckpoints> = null, private animator_: IAnimation = null, private debounce_ = 250){
         super('screen', null, null, () => {
             let position = ScreenGlobalHandler.GetScrollPosition(), size = {
                 width: window.innerWidth,
@@ -75,7 +80,7 @@ export class ScreenGlobalHandler extends GlobalHandler{
             
             this.properties_ = {
                 size: size,
-                breakpoint: ScreenGlobalHandler.ComputeBreakpoint(size.width),
+                breakpoint: this.ComputeBreakpoint_(size.width),
                 scrollPosition: position,
                 scrollPercentage: ScreenGlobalHandler.ComputePercentage(position),
                 scrollDirection: {
@@ -167,6 +172,37 @@ export class ScreenGlobalHandler extends GlobalHandler{
         });
 
         this.scopeId_ = GlobalHandler.region_.GenerateDirectiveScopeId(null, `_${this.key_}`);
+        if (!this.checkpoints_){
+            this.checkpoints_ = [
+                {
+                    name: 'xs',
+                    value: 576,
+                },
+                {
+                    name: 'sm',
+                    value: 768,
+                },
+                {
+                    name: 'md',
+                    value: 992,
+                },
+                {
+                    name: 'lg',
+                    value: 1200,
+                },
+                {
+                    name: 'xl',
+                    value: 1400,
+                },
+                {
+                    name: 'xxl',
+                    value: Number.MAX_SAFE_INTEGER,
+                },
+            ];
+        }
+        else{
+            this.checkpoints_ = this.checkpoints_.sort((a, b) => ((a.value < b.value) ? -1 : ((a.value == b.value) ? 0 : 1)));
+        }
     }
 
     private HandleResize_(){
@@ -175,7 +211,7 @@ export class ScreenGlobalHandler extends GlobalHandler{
         this.properties_.size.width = window.innerWidth;
         this.properties_.size.height = window.innerHeight;
 
-        let breakpoint = ScreenGlobalHandler.ComputeBreakpoint(this.properties_.size.width);
+        let breakpoint = this.ComputeBreakpoint_(this.properties_.size.width);
         if (breakpoint[0] !== this.properties_.breakpoint[0]){
             GlobalHandler.region_.GetChanges().AddComposed('breakpoint', this.scopeId_);
             this.properties_.breakpoint[0] = breakpoint[0];
@@ -296,28 +332,14 @@ export class ScreenGlobalHandler extends GlobalHandler{
         }));
     }
 
-    public static ComputeBreakpoint(width: number): [string, number]{
-        if (width < 576){//Extra small
-            return [ 'xs', 0 ];
+    private ComputeBreakpoint_(width: number): [string, number]{
+        for (let index = 0; index < this.checkpoints_.length; ++index){
+            if (width < this.checkpoints_[index].value){
+                return [this.checkpoints_[index].name, index];
+            }
         }
-
-        if (width < 768){//Small
-            return [ 'sm', 1 ];
-        }
-
-        if (width < 992){//Medium
-            return [ 'md', 2 ];
-        }
-
-        if (width < 1200){//Large
-            return [ 'lg', 3 ];
-        }
-
-        if (width < 1400){//Extra large
-            return [ 'xl', 4 ];
-        }
-
-        return [ 'xxl', 5 ];//Extra extra large
+        
+        return [ '', -1 ];//Not found
     }
 
     public static GetScrollPosition(): Point{
@@ -352,27 +374,41 @@ export class ScreenGlobalHandler extends GlobalHandler{
             to.y = position.y;
         }
 
-        if (animate && handler && !handler.animator_){
+        if (animate && handler && handler.animator_){//Custom animation
+            let scroll = () => {
+                handler.animator_.Bind((fraction) => {
+                    window.scrollTo((to.x + (to.x * fraction)), (to.y + (to.y * fraction)));
+                }).run();
+            };
+
             if (from.x != position.x || from.y != position.y){
                 window.scrollTo(from.x, from.y);
                 setTimeout(() => {//Defer final scroll
-                    window.scrollTo({
-                        left: to.x,
-                        top: to.y,
-                        behavior: 'smooth',
-                    });
+                    scroll();
                 }, 0);
             }
             else{//Scroll from current
+                scroll();
+            }
+        }
+        else if (animate){//Use default browser animation
+            let scroll = () => {
                 window.scrollTo({
                     left: to.x,
                     top: to.y,
                     behavior: 'smooth',
                 });
-            }
-        }
-        else if (animate && handler){
+            };
 
+            if (from.x != position.x || from.y != position.y){
+                window.scrollTo(from.x, from.y);
+                setTimeout(() => {//Defer final scroll
+                    scroll();
+                }, 0);
+            }
+            else{//Scroll from current
+                scroll();
+            }
         }
         else if (from.x != position.x || from.y != position.y){
             window.scrollTo(from.x, from.y);

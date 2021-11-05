@@ -408,7 +408,7 @@ export class NotificationsGlobalHandler extends GlobalHandler{
             }
 
             if (data.readOnVisible !== false){
-                intersection = `${config.GetDirectiveName('intersection')}="{ threshold: 0.7, root: $ancestor(${ancestor}) }"`;
+                intersection = `${config.GetDirectiveName('intersection')}.in.once="{ threshold: 0.5, root: $ancestor(${ancestor}) }"`;
                 intersection += ` ${config.GetDirectiveName('on')}:in.once="$notifications.markAsRead('${data.id}')"`;
             }
 
@@ -438,7 +438,7 @@ export class NotificationsGlobalHandler extends GlobalHandler{
             let title = '';
             if (!data.titleHtml && data.title){
                 title = `
-                    <h3 class="title" style="padding-right: 16px; font-size: 18px; font-weight: 700;">${data.title}</h3>
+                    <h3 class="title" style="padding-right: 16px; font-size: 18px; font-weight: 700;" x-text="'${data.title.replace(/\'/g, '\\\'')}'"></h3>
                 `;
             }
             else if (data.titleHtml){

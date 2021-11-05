@@ -17,7 +17,15 @@ interface StateTargetInfo{
     updateState(key: string, value: any, requireAll: boolean): void;
 }
 
+interface StateObserverInfo{
+    target: HTMLElement;
+    handler: (node?: HTMLElement) => void;
+}
+
 export class StateDirectiveHandler extends ExtendedDirectiveHandler{
+    private observer_: MutationObserver = null;
+    private observerHandlers_ = new Array<StateObserverInfo>();
+    
     public constructor(private form_: IDirectiveHandler){
         super('state', (region: IRegion, element: HTMLElement, directive: IDirective) => {
             let response = ExtendedDirectiveHandler.CheckEvents(this.key_, region, element, directive, 'change', ['valid', 'dirty', 'typing', 'same']);
@@ -73,7 +81,7 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                     myOptions.isUnknown = true;
                 }
 
-                let setStateValue = (state: StateInfo, key: string, value: boolean) => {
+                let elementScope = region.AddElement(target, true), setStateValue = (state: StateInfo, key: string, value: boolean) => {
                     if (value == state[key]){//No change
                         return false;
                     }
@@ -109,6 +117,22 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
 
                     return true;
                 };
+                
+                if (`#${this.key_}` in elementScope.locals){
+                    if (myOptions.isUnknown){
+                        let myTargetInfo = (elementScope.locals[`#${this.key_}_target_info`] as StateTargetInfo);
+                        
+                        [...target.children].forEach(child => mount((child as HTMLElement), myTargetInfo));
+                        for (let state of myTargetInfo.childStates){
+                            if (!state.valid){
+                                setStateValue(myTargetInfo.state, 'valid', false);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    return myOptions;
+                }
                 
                 let regionId = region.GetId(), scopeId = region.GenerateDirectiveScopeId(null, `_${this.key_}`), myTargetInfo: StateTargetInfo = {
                     state: getDefaultState(),
@@ -213,21 +237,22 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                 else{//Unknown
                     [...target.children].forEach(child => mount((child as HTMLElement), myTargetInfo));
                     if (myTargetInfo.childStates.length == 0){
-                        return;
+                        return myOptions;
                     }
 
-                    myTargetInfo.childStates.forEach((state) => {
+                    for (let state of myTargetInfo.childStates){
                         if (!state.valid){
                             myTargetInfo.state.valid = false;
+                            break;
                         }
-                    });
+                    }
                 }
 
                 if (targetInfo){
                     targetInfo.childStates.push(myTargetInfo.state);
                 }
                 
-                let elementScope = region.AddElement(target, true), proxyGetter = (prop: string) => {
+                let proxyGetter = (prop: string) => {
                     if (prop in myTargetInfo.state){
                         Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
                         return myTargetInfo.state[prop];
@@ -277,6 +302,7 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
 
                 const proxyKeys = [...Object.keys(myTargetInfo.state), ...Object.keys(options)];
                 elementScope.locals[`#${this.key_}`] = ExtendedDirectiveHandler.CreateProxy(proxyGetter, proxyKeys);
+                elementScope.locals[`#${this.key_}_target_info`] = myTargetInfo;
 
                 if (!targetInfo){//Root
                     elementScope.locals[`\$${this.key_}`] = ExtendedDirectiveHandler.CreateProxy((prop) => {
@@ -288,14 +314,72 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                         return proxyGetter(prop);
                     }, [...proxyKeys, 'self'], proxySetter);
                 }
+
+                return myOptions;
             };
 
-            mount(element);
+            if (mount(element).isUnknown){//Observe
+                this.AddObserverHandler_(element, () => mount(element));
+                region.AddElement(element, true).uninitCallbacks.push(() => this.RemoveObserverHandler_(element));
+            }
+            
             if (options.submit){//Find form
                 options.form = (region.GetElementWith(element, target => (target instanceof HTMLFormElement)) as HTMLFormElement);
             }
             
             return DirectiveHandlerReturn.Handled;
         });
+
+        if (window.MutationObserver){
+            this.observer_ = new window.MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type !== 'childList'){
+                        return;
+                    }
+                    
+                    let handlers = this.observerHandlers_.filter(item => (item.target === mutation.target || item.target.contains(mutation.target))).map(item => item.handler);
+                    if (handlers.length == 0){
+                        return;
+                    }
+                    
+                    mutation.addedNodes.forEach((node) => {
+                        if (node instanceof HTMLElement){
+                            handlers.forEach(handler => handler(node));
+                        }
+                    });
+                });
+    
+                Region.ExecutePostProcessCallbacks();
+            });
+        }
+    }
+
+    protected AddObserverHandler_(target: HTMLElement, handler: (node?: HTMLElement) => void){
+        if (!this.observer_){
+            return;
+        }
+        
+        if (this.observerHandlers_.findIndex(item => (item.target === target)) == -1){
+            this.observer_.observe(target, {
+                childList: true,
+                subtree: true,
+                attributes: false,
+                characterData: false,
+            });
+        }
+        
+        this.observerHandlers_.push({
+            target: target,
+            handler: handler,
+        });
+    }
+
+    protected RemoveObserverHandler_(target: HTMLElement | ((node?: HTMLElement) => void)){
+        if (!this.observer_){
+            return;
+        }
+        
+        let isHandler = (typeof target === 'function');
+        this.observerHandlers_ = this.observerHandlers_.filter(item => (isHandler ? (target !== item.handler) : (target !== item.target)));
     }
 }

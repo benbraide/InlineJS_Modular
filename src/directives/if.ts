@@ -11,15 +11,15 @@ export class IfDirectiveHandler extends DirectiveHandler{
                 if (itemInfo){
                     ControlHelper.RemoveItem(itemInfo, info);
                 }
-            }, 'x-if');
+            }, Region.GetConfig().GetDirectiveName(this.key_));
 
             if (!info){
                 return DirectiveHandlerReturn.Handled;
             }
             
-            let lastValue = false, itemInfo: ControlItemInfo = null, animate = (directive.arg.key === 'animate'), scope = region.GetElementScope(info.template);
+            let lastValue = false, itemInfo: ControlItemInfo = null, scope = region.GetElementScope(info.template);
             if (!scope){
-                region.GetState().ReportError('Failed to bind \'x-if\' to element');
+                region.GetState().ReportError(`Failed to bind '${Region.GetConfig().GetDirectiveName(this.key_)}' to element`);
                 return DirectiveHandlerReturn.Handled;
             }
             

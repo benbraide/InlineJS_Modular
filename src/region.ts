@@ -15,7 +15,6 @@ import {
     IIntersectionObserverManager,
     IAlertHandler,
     ILocalHandler,
-    IRootElement,
     ITrapInfo,
     AnimationBindInfo,
     IParsedAnimation,
@@ -23,6 +22,8 @@ import {
     AnimationTargetType,
     IResizeObserver,
 } from './typedefs'
+
+import { RootElement } from './rootelement'
 
 import { Stack } from './stack'
 import { State } from './state'
@@ -301,7 +302,7 @@ export class Region implements IRegion{
         return ((0 <= index) ? null : ancestor);
     }
 
-    public GetElementScope(element: HTMLElement | string | true | IRootElement): IElementScope{
+    public GetElementScope(element: HTMLElement | string | true | RootElement): IElementScope{
         let key: string;
         if (typeof element === 'string'){
             key = element;
@@ -309,11 +310,14 @@ export class Region implements IRegion{
         else if (element === true){
             key = this.state_.GetContext(State.ElementContextKey())?.getAttribute(Region.GetElementKeyName());
         }
-        else if (!(element instanceof HTMLElement)){
+        else if (element instanceof RootElement){
             key = this.rootElement_.getAttribute(Region.GetElementKeyName());
         }
-        else if (element){//HTMLElement
+        else if (element && 'getAttribute' in element){//HTMLElement
             key = element.getAttribute(Region.GetElementKeyName());
+        }
+        else{//Unknown
+            key = '';
         }
 
         return ((key && key in this.elementScopes_) ? this.elementScopes_[key] : null);

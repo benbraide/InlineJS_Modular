@@ -1,4 +1,5 @@
-import { IRegion, IElementScope, IState, IProxy, IChanges, IChangeRefInfo, IEvaluator, IProcessor, IConfig, IDatabase, IDirectiveManager, IGlobalManager, IOutsideEventManager, IIntersectionObserverManager, IAlertHandler, IRootElement, AnimationBindInfo, IParsedAnimation, IAnimationParser, AnimationTargetType, IResizeObserver } from './typedefs';
+import { IRegion, IElementScope, IState, IProxy, IChanges, IChangeRefInfo, IEvaluator, IProcessor, IConfig, IDatabase, IDirectiveManager, IGlobalManager, IOutsideEventManager, IIntersectionObserverManager, IAlertHandler, AnimationBindInfo, IParsedAnimation, IAnimationParser, AnimationTargetType, IResizeObserver } from './typedefs';
+import { RootElement } from './rootelement';
 export declare class NoAnimation implements IParsedAnimation {
     private beforeHandlers_;
     private afterHandlers_;
@@ -67,7 +68,7 @@ export declare class Region implements IRegion {
     GetRootElement(): HTMLElement;
     GetElementWith(target: HTMLElement | true, callback: (resolvedTarget: HTMLElement) => boolean): HTMLElement;
     GetElementAncestor(target: HTMLElement | true, index: number): HTMLElement;
-    GetElementScope(element: HTMLElement | string | true | IRootElement): IElementScope;
+    GetElementScope(element: HTMLElement | string | true | RootElement): IElementScope;
     GetElement(element: HTMLElement | string): HTMLElement;
     GetState(): IState;
     GetChanges(): IChanges;

@@ -60,7 +60,17 @@ export class OverlayGlobalHandler extends GlobalHandler{
         overflow: false,
     };
 
-    public constructor(private updateBody_ = false, private padBody_ = false){
+    private styles_: Record<string, string> = {
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.63)',
+        zIndex: '',
+    };
+
+    public constructor(private updateBody_ = false, private padBody_ = false, styles: Record<string, string> = null){
         super('overlay', null, null, () => {
             this.proxy_ = Region.CreateProxy((prop) => {
                 if (prop in this.state_){
@@ -96,14 +106,18 @@ export class OverlayGlobalHandler extends GlobalHandler{
             this.CheckOverflow_();
         };
 
-        this.state_.element.style.position = 'fixed';
-        this.state_.element.style.top = '0';
-        this.state_.element.style.left = '0';
-        this.state_.element.style.width = '0';
-        this.state_.element.style.height = '100vh';
-        this.state_.element.style.backgroundColor = 'rgba(0, 0, 0, 0.63)';
-        this.state_.element.style.zIndex = this.state_.zIndex.toString();
+        this.styles_.zIndex = this.state_.zIndex.toString();
+        Object.entries(styles || {}).forEach(([key, value]) => {
+            this.styles_[key] = value;
+        });
 
+        Object.entries(this.styles_).forEach(([key, value]) => {
+            if (key in this.state_.element.style){
+                this.state_.element.style[key] = value;
+            }
+        });
+
+        this.state_.element.style.width = '0';
         this.state_.element.addEventListener('click', (e) => {
             this.clickHandlers_.forEach((handler) => {
                 try{
@@ -171,7 +185,7 @@ export class OverlayGlobalHandler extends GlobalHandler{
             document.body.style.overflow = 'auto';
         }
         
-        this.state_.element.style.width = (visible ? '100vw' : '0');
+        this.state_.element.style.width = (visible ? (this.styles_['width'] || '100vw') : '0');
         this.CheckOverflow_();
 
         window.dispatchEvent(new CustomEvent(`${this.key_}.visibility.change`, {

@@ -24,7 +24,7 @@ export class EachDirectiveHandler extends DirectiveHandler{
         super('each', (region: IRegion, element: HTMLElement, directive: IDirective) => {
             let info = ControlHelper.Init(region, element, directive.arg.options, (directive.arg.key === 'animate'), () => {
                 empty(Region.Get(info.regionId));
-            }, 'x-each'), isCount = false, isReverse = false;
+            }, Region.GetConfig().GetDirectiveName(this.key_)), isCount = false, isReverse = false;
 
             if (!info){
                 return DirectiveHandlerReturn.Handled;
@@ -32,7 +32,7 @@ export class EachDirectiveHandler extends DirectiveHandler{
 
             let scope = region.GetElementScope(info.template);
             if (!scope){
-                region.GetState().ReportError('Failed to bind \'x-each\' to element');
+                region.GetState().ReportError(`Failed to bind '${Region.GetConfig().GetDirectiveName(this.key_)}' to element`);
                 return DirectiveHandlerReturn.Handled;
             }
             
@@ -50,7 +50,7 @@ export class EachDirectiveHandler extends DirectiveHandler{
                 rangeValue: null,
             };
 
-            let valueKey = '', matches = directive.value.match(/^(.+)? as[ ]+([A-Za-z_][0-9A-Za-z_$]*)[ ]*$/), expression: string, animate = (directive.arg.key === 'animate');
+            let valueKey = '', matches = directive.value.match(/^(.+)? as[ ]+([A-Za-z_][0-9A-Za-z_$]*)[ ]*$/), expression: string;
             if (matches && 2 < matches.length){
                 expression = matches[1];
                 valueKey = matches[2];

@@ -2,11 +2,11 @@ import { IRegion } from '../../typedefs';
 import { ExtendedDirectiveHandler } from '../extended/generic';
 export interface IFormMiddleware {
     GetKey(): string;
-    Handle(region?: IRegion, element?: HTMLElement): void | boolean | Promise<boolean>;
+    Handle(region?: IRegion, element?: HTMLElement): void | boolean | Promise<void | boolean>;
 }
 export declare class ConfirmFormMiddleware implements IFormMiddleware {
     GetKey(): string;
-    Handle(): void | boolean | Promise<boolean>;
+    Handle(): void | boolean | Promise<void | boolean>;
 }
 export declare class FormDirectiveHandler extends ExtendedDirectiveHandler {
     private middlewares_;
