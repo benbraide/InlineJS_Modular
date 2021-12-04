@@ -10,7 +10,7 @@ export declare class CartGlobalHandler extends CollectionGlobalHandler<IProduct>
     private offsets_;
     private subTotal_;
     private total_;
-    constructor(auth: IAuthGlobalHandler);
+    constructor(auth: IAuthGlobalHandler, $idKey?: string, $pluralIdKey?: string);
     private ComputeSubTotal_;
     private AfterUpdate_;
     SetOffset(key: string, value: number | OffsetHandlerType, isFixed?: boolean | null, init?: any): void;

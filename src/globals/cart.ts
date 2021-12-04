@@ -15,10 +15,10 @@ export class CartGlobalHandler extends CollectionGlobalHandler<IProduct>{
     private subTotal_ = 0;
     private total_ = 0;
     
-    public constructor(auth: IAuthGlobalHandler){
+    public constructor(auth: IAuthGlobalHandler, $idKey = 'sku', $pluralIdKey = 'skus'){
         super('cart', auth, {
-            idKey: 'sku',
-            idKeyPlural: 'skus',
+            idKey: $idKey,
+            idKeyPlural: $pluralIdKey,
             entryName: 'product',
             entryNamePlural: 'products',
             afterUpdate: (items) => this.AfterUpdate_(items),

@@ -25,4 +25,5 @@ export declare class DirectiveHandler implements IDirectiveHandler {
     static GetChildElementAt(region: IRegion, parent: HTMLElement, index: number, after?: HTMLElement): HTMLElement;
     static InsertOrAppendChildElement(region: IRegion, parent: HTMLElement, element: HTMLElement, index: number, after?: HTMLElement): void;
     static IsEventRequest(key: string): boolean;
+    static CheckEvents(key: string, region: IRegion, element: HTMLElement, directive: IDirective, defaultEvent?: string, events?: Array<string>): DirectiveHandlerReturn;
 }

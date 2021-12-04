@@ -16,6 +16,7 @@ export interface XHROptions {
     expressionElement?: HTMLElement;
     publicProps?: Array<string>;
     lazy?: boolean;
+    delayed?: boolean;
     ancestor?: number;
     fetchMode?: FetchMode;
     onLoad?: (region?: IRegion, data?: any) => void;
@@ -25,6 +26,7 @@ export interface XHROptions {
 }
 export declare class XHRHelper {
     static BindFetch(options: XHROptions): void;
+    static BindDelayed(region: IRegion, key: string, element: HTMLElement, expression: string): void;
     static ExtractFetchMode(options: Array<string>): FetchMode;
 }
 export declare class XHRDirectiveHandler extends ExtendedDirectiveHandler {

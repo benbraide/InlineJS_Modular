@@ -184,4 +184,18 @@ export class DirectiveHandler implements IDirectiveHandler{
         const requestList = ['bind', 'event', 'on'];
         return requestList.includes(key);
     }
+
+    public static CheckEvents(key: string, region: IRegion, element: HTMLElement, directive: IDirective, defaultEvent?: string, events?: Array<string>){
+        const optionsWhitelist = ['outside', 'window', 'document'];
+        
+        if (defaultEvent && (directive.arg.key === defaultEvent || DirectiveHandler.IsEventRequest(directive.arg?.key))){
+            return region.ForwardEventBinding(element, directive.value, directive.arg.options.filter(option => !optionsWhitelist.includes(option)), `${key}.${defaultEvent}`);
+        }
+
+        if (events && events.includes(directive.arg.key)){
+            return region.ForwardEventBinding(element, directive.value, directive.arg.options.filter(option => !optionsWhitelist.includes(option)), `${key}.${directive.arg.key}`);
+        }
+
+        return DirectiveHandlerReturn.Nil;
+    }
 }

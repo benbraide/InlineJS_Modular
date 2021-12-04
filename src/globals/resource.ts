@@ -9,11 +9,15 @@ import { Resource, ResourceOptions, ResourceHandlerType, ResourceMixedItemInfo }
 export class ResourceDirectiveHandler extends ExtendedDirectiveHandler{
     public constructor(resource: ResourceGlobalHandler){
         super(resource.GetKey(), (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let itemInfo: ControlItemInfo = null, info = ControlHelper.Init(region, element, directive.arg.options, false, () => {
+            let itemInfo: ControlItemInfo = null, info = ControlHelper.Init(this.key_, region, element, directive, () => {
                 if (itemInfo){
                     ControlHelper.RemoveItem(itemInfo, info);
                 }
-            }, Region.GetConfig().GetDirectiveName(this.key_));
+            });
+
+            if (!info){
+                return DirectiveHandlerReturn.Handled;
+            }
 
             let scope = region.GetElementScope(info.template);
             if (!scope){
@@ -72,11 +76,11 @@ export class ResourceDirectiveHandler extends ExtendedDirectiveHandler{
                 else if (options.script){
                     resource.GetScript(DirectiveHandler.Evaluate(myRegion, element, directive.value), onLoad, options.concurrent);
                 }
-                else if (options.mixed){
-                    resource.GetMixed(DirectiveHandler.Evaluate(myRegion, element, directive.value), onLoad, options.concurrent);
-                }
-                else{//Data
+                else if (options.data || options.json || options.text){
                     resource.GetData(DirectiveHandler.Evaluate(myRegion, element, directive.value), onLoad, options.concurrent, options.json);
+                }
+                else{//Mixed
+                    resource.GetMixed(DirectiveHandler.Evaluate(myRegion, element, directive.value), onLoad, options.concurrent);
                 }
             };
 
@@ -148,12 +152,12 @@ export class ResourceGlobalHandler extends GlobalHandler{
         this.resource_.GetScript(url, handler, concurrent, attributes);
     }
 
-    public GetMixed(items: ResourceMixedItemInfo | Array<ResourceMixedItemInfo>, handler: ResourceHandlerType, concurrent = true, attributes?: Record<string, string>){
-        this.resource_.GetMixed(items, handler, concurrent, attributes);
-    }
-
     public GetData(url: string | Array<string>, handler: ResourceHandlerType, concurrent = true, json = true){
         this.resource_.GetData(url, handler, concurrent, json);
+    }
+
+    public GetMixed(items: ResourceMixedItemInfo | string | Array<ResourceMixedItemInfo | string>, handler: ResourceHandlerType, concurrent = true, attributes?: Record<string, string>){
+        this.resource_.GetMixed(items, handler, concurrent, attributes);
     }
 
     public static BuildOptions(type: 'link' | 'script' | 'data', url: string, attributes?: Record<string, string>, json = true): ResourceOptions{

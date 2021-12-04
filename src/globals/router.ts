@@ -1,4 +1,4 @@
-import { IDirective, DirectiveHandlerReturn, IRegion, IRouterGlobalHandler, OnRouterLoadHandlerType, PathInfo, IBackPath } from '../typedefs'
+import { IDirective, DirectiveHandlerReturn, IRegion, IRouterGlobalHandler, OnRouterLoadHandlerType, PathInfo, IBackPath, IModalGlobalHandler } from '../typedefs'
 import { ExtendedDirectiveHandler } from '../directives/extended/generic'
 import { Fetch } from '../utilities/fetch'
 import { GlobalHandler } from './generic'
@@ -100,7 +100,7 @@ export class RegisterDirectiveHandler extends ExtendedDirectiveHandler{
 }
 
 export class LinkDirectiveHandler extends ExtendedDirectiveHandler{
-    public constructor(private router_: RouterGlobalHandler){
+    public constructor(private router_: RouterGlobalHandler, modal: IModalGlobalHandler = null){
         super(`${router_.GetKey()}.link`, (region: IRegion, element: HTMLElement, directive: IDirective) => {
             let elementScope = region.AddElement(element);
             if (!elementScope){
@@ -118,8 +118,8 @@ export class LinkDirectiveHandler extends ExtendedDirectiveHandler{
                 return ((element instanceof HTMLFormElement) ? this.router_.ProcessUrl(element.action) : '');
             };
 
-            let extractPathInfo = (): PathInfo => {
-                let targetPath = (path || getPathFromElement());
+            let extractPathInfo = (targetPath = ''): PathInfo => {
+                targetPath = (targetPath || path || getPathFromElement());
 
                 let queryStartIndex = targetPath.indexOf('?');
                 return {
@@ -142,9 +142,16 @@ export class LinkDirectiveHandler extends ExtendedDirectiveHandler{
 
             let shouldReload = directive.arg.options.includes('reload'), afterEvent: (e?: Event) => void = null, onEvent = (e: Event) => {
                 e.preventDefault();
-                extractedPath = extractPathInfo();
 
+                let targetPath = (path || getPathFromElement());
+                if (modal && targetPath.startsWith('modal://')){
+                    modal.SetUrl(targetPath);
+                    return;
+                }
+                
+                extractedPath = extractPathInfo(targetPath);
                 updateActive();
+
                 if (afterEvent){
                     afterEvent(e);
                 }
@@ -187,12 +194,14 @@ export class LinkDirectiveHandler extends ExtendedDirectiveHandler{
                 };
             };
 
-            region.GetState().TrapGetAccess(() => {
-                let data = ExtendedDirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value);
-                path = ((typeof data === 'string') ? this.router_.ProcessUrl(data.trim()) : '');
-                extractedPath = extractPathInfo();
-                updateActive();
-            }, true, element);
+            if (directive.value !== Region.GetConfig().GetDirectiveName(this.key_)){
+                region.GetState().TrapGetAccess(() => {
+                    let data = ExtendedDirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value);
+                    path = ((typeof data === 'string') ? this.router_.ProcessUrl(data.trim()) : '');
+                    extractedPath = extractPathInfo();
+                    updateActive();
+                }, true, element);
+            }
             
             let bindInfo = bindEvent();
             afterEvent = bindInfo.after;
@@ -548,6 +557,10 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
         
         if (url.startsWith(`${this.origin_}/`)){//Skip origin
             url = url.substr(this.origin_.length);
+        }
+        
+        if (/^[a-zA-Z0-9_]+:\/\//.test(url)){
+            return url;
         }
 
         if (includeAjaxPrefix && this.ajaxPrefix_){

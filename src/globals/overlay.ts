@@ -1,4 +1,4 @@
-import { IDirective, DirectiveHandlerReturn, IRegion } from '../typedefs'
+import { IDirective, DirectiveHandlerReturn, IRegion, IOverlayGlobalHandler } from '../typedefs'
 import { ExtendedDirectiveHandler } from '../directives/extended/generic'
 import { GlobalHandler } from './generic'
 import { Region } from '../region'
@@ -12,17 +12,19 @@ export class OverlayDirectiveHandler extends ExtendedDirectiveHandler{
             }
 
             if (directive.arg.key === 'click'){
-                let regionId = region.GetId(), onEvent = (e: Event) => {
+                let regionId = region.GetId(), onEvent = (bubbled: boolean, e: Event) => {
                     let myRegion = Region.Get(regionId), state = myRegion?.GetState();
                     try{
                         if (state){
                             state.PushContext(state.EventContextKey(), e);
+                            state.PushContext('bubbled', bubbled);
                         }
 
                         ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value, false, e);
                     }
                     finally{
                         if (state){
+                            state.PopContext('bubbled');
                             state.PopContext(state.EventContextKey());
                         }
                     }
@@ -46,10 +48,10 @@ export class OverlayDirectiveHandler extends ExtendedDirectiveHandler{
     }
 }
 
-export class OverlayGlobalHandler extends GlobalHandler{
+export class OverlayGlobalHandler extends GlobalHandler implements IOverlayGlobalHandler{
     private scopeId_: string;
 
-    private clickHandlers_ = new Array<(e?: Event) => void>();
+    private clickHandlers_ = new Array<(bubbled?: boolean, e?: Event) => void>();
     private resizeHandler_: () => void;
     
     private state_ = {
@@ -121,7 +123,7 @@ export class OverlayGlobalHandler extends GlobalHandler{
         this.state_.element.addEventListener('click', (e) => {
             this.clickHandlers_.forEach((handler) => {
                 try{
-                    handler(e);
+                    handler((e.target !== this.state_.element), e);
                 }
                 catch{}
             });
@@ -141,6 +143,10 @@ export class OverlayGlobalHandler extends GlobalHandler{
         this.state_.element.style.zIndex = value.toString();
     }
 
+    public GetZIndex(){
+        return this.state_.zIndex;
+    }
+
     public OffsetCount(offset: number){
         if (offset == 0 || (offset < 0 && this.state_.count <= 0)){//No change
             return;
@@ -158,11 +164,11 @@ export class OverlayGlobalHandler extends GlobalHandler{
         }
     }
 
-    public AddClickHandler(handler: (e?: Event) => void){
+    public AddClickHandler(handler: (bubbled?: boolean, e?: Event) => void){
         this.clickHandlers_.push(handler);
     }
 
-    public RemoveClickHandler(handler: (e?: Event) => void){
+    public RemoveClickHandler(handler: (bubbled?: boolean, e?: Event) => void){
         this.clickHandlers_.splice(this.clickHandlers_.indexOf(handler), 1);
     }
 

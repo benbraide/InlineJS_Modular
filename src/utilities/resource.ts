@@ -14,7 +14,7 @@ export interface ResourceInfo{
 }
 
 export interface ResourceMixedItemInfo{
-    type: 'link' | 'script';
+    type: 'link' | 'script' | 'data';
     url: string;
 }
 
@@ -123,12 +123,26 @@ export class Resource{
         this.Get_((Array.isArray(url) ? url : [url]).map(item => Resource.BuildOptions('script', item, attributes)), handler, concurrent);
     }
 
-    public GetMixed(items: ResourceMixedItemInfo | Array<ResourceMixedItemInfo>, handler: ResourceHandlerType, concurrent = true, attributes?: Record<string, string>){
-        this.Get_((Array.isArray(items) ? items : [items]).map(item => Resource.BuildOptions(item.type, item.url, attributes)), handler, concurrent);
-    }
-
     public GetData(url: string | Array<string>, handler: ResourceHandlerType, concurrent = true, json = true){
         this.Get_((Array.isArray(url) ? url : [url]).map(item => Resource.BuildOptions('data', item, null, json)), handler, concurrent);
+    }
+
+    public GetMixed(items: ResourceMixedItemInfo | string | Array<ResourceMixedItemInfo | string>, handler: ResourceHandlerType, concurrent = true, attributes?: Record<string, string>){
+        this.Get_((Array.isArray(items) ? items : [items]).map((item) => {
+            if (typeof item === 'string'){
+                if (item.endsWith('.css')){
+                    return Resource.BuildOptions('link', item, attributes);
+                }
+
+                if (item.endsWith('.js')){
+                    return Resource.BuildOptions('script', item, attributes);
+                }
+
+                return Resource.BuildOptions('data', item, attributes);
+            }
+
+            return Resource.BuildOptions(item.type, item.url, attributes);
+        }), handler, concurrent);
     }
 
     public static BuildOptions(type: 'link' | 'script' | 'data', url: string, attributes?: Record<string, string>, json = true): ResourceOptions{

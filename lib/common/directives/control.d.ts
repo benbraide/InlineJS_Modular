@@ -1,5 +1,6 @@
-import { IRegion, IParsedAnimation } from '../typedefs';
+import { IRegion, IParsedAnimation, IDirective } from '../typedefs';
 export interface ControlInfo {
+    key: string;
     regionId: string;
     template: HTMLTemplateElement;
     parent: HTMLElement;
@@ -16,7 +17,7 @@ export interface ControlItemInfo {
     onLoadList: Array<ControlOnLoadInfo>;
 }
 export declare class ControlHelper {
-    static Init(region: IRegion, element: HTMLElement, options: Array<string>, animate: boolean, onUninit: () => void, directiveName?: string): ControlInfo;
+    static Init(key: string, region: IRegion, element: HTMLElement, directive: IDirective, onUninit: () => void, animate?: boolean): ControlInfo;
     static InsertItem(region: IRegion, info: ControlInfo, callback?: (itemInfo?: ControlItemInfo) => void, offset?: number): ControlItemInfo;
     static RemoveItem(itemInfo: ControlItemInfo, info: ControlInfo): void;
 }

@@ -22,9 +22,9 @@ export interface EachOptions{
 export class EachDirectiveHandler extends DirectiveHandler{
     public constructor(){
         super('each', (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let info = ControlHelper.Init(region, element, directive.arg.options, (directive.arg.key === 'animate'), () => {
+            let info = ControlHelper.Init(this.key_, region, element, directive, () => {
                 empty(Region.Get(info.regionId));
-            }, Region.GetConfig().GetDirectiveName(this.key_)), isCount = false, isReverse = false;
+            }), isCount = false, isReverse = false;
 
             if (!info){
                 return DirectiveHandlerReturn.Handled;

@@ -20,6 +20,7 @@ export interface XHROptions{
     expressionElement?: HTMLElement;
     publicProps?: Array<string>;
     lazy?: boolean;
+    delayed?: boolean;
     ancestor?: number;
     fetchMode?: FetchMode;
     onLoad?: (region?: IRegion, data?: any) => void;
@@ -40,9 +41,17 @@ export class XHRHelper{
             data: (options.formatData ? options.formatData(null, options.fetchMode) : null),
         };
 
-        let methods = {
+        let lazyUrl: string = null, methods = {
             reload: () => {
-                if (fetch){
+                if (!fetch){
+                    return;
+                }
+
+                if (options.lazy && options.delayed){
+                    options.lazy = false;
+                    fetch.props.url = lazyUrl;
+                }
+                else if (!options.lazy){
                     fetch.Reload();
                 }
             },
@@ -151,7 +160,7 @@ export class XHRHelper{
         }, (options.fetchMode || FetchMode.Replace));
 
         if (options.expression && target){//Bind expression
-            let elementScope = options.region.AddElement(target, true), lazyUrl: string = null;
+            let elementScope = options.region.AddElement(target, true);
             
             fetch.Watch(options.region);
             elementScope.locals[`$${options.key}`] = fetch.props;
@@ -177,6 +186,9 @@ export class XHRHelper{
                     options.lazy = false;
                 }
             }
+            else if (options.delayed){
+                options.lazy = true;
+            }
             
             options.region.GetState().TrapGetAccess(() => {
                 if (!fetch){
@@ -201,6 +213,27 @@ export class XHRHelper{
         }
     }
 
+    public static BindDelayed(region: IRegion, key: string, element: HTMLElement, expression: string){
+        let regionId = region.GetId();
+        region.GetState().TrapGetAccess(() => {
+            let myRegion = Region.Get(regionId);
+            if (!myRegion){
+                return false;
+            }
+
+            if (!ExtendedDirectiveHandler.Evaluate(myRegion, element, expression)){
+                return true;
+            }
+
+            let proxy = region.GetLocal(element, `$${key}`, true);
+            if (proxy){
+                proxy.reload();
+            }
+
+            return false;
+        }, true, element);
+    }
+
     public static ExtractFetchMode(options: Array<string>){
         if (options.includes('append')){
             return FetchMode.Append;
@@ -218,25 +251,31 @@ export class XHRDirectiveHandler extends ExtendedDirectiveHandler{
                 return response;
             }
 
-            let lazy = false, ancestor = -1;
-            if (directive.arg.options.includes('lazy')){
-                let ancestorIndex = directive.arg.options.indexOf('ancestor');
-                if (ancestorIndex != -1){//Resolve ancestor
-                    ancestor = (((ancestorIndex + 1) < directive.arg.options.length) ? (parseInt(directive.arg.options[ancestorIndex + 1]) || 0) : 0);
+            if (directive.arg.key !== 'delayed'){
+                let lazy = false, ancestor = -1;
+                if (directive.arg.options.includes('lazy')){
+                    let ancestorIndex = directive.arg.options.indexOf('ancestor');
+                    if (ancestorIndex != -1){//Resolve ancestor
+                        ancestor = (((ancestorIndex + 1) < directive.arg.options.length) ? (parseInt(directive.arg.options[ancestorIndex + 1]) || 0) : 0);
+                    }
+    
+                    lazy = true;
                 }
-
-                lazy = true;
+                
+                XHRHelper.BindFetch({
+                    region: region,
+                    key: this.key_,
+                    expression: directive.value,
+                    element: element,
+                    lazy: lazy,
+                    delayed: directive.arg.options.includes('delayed'),
+                    ancestor: ancestor,
+                    fetchMode: XHRHelper.ExtractFetchMode(directive.arg.options),
+                });
             }
-            
-            XHRHelper.BindFetch({
-                region: region,
-                key: this.key_,
-                expression: directive.value,
-                element: element,
-                lazy: lazy,
-                ancestor: ancestor,
-                fetchMode: XHRHelper.ExtractFetchMode(directive.arg.options),
-            });
+            else{
+                XHRHelper.BindDelayed(region, this.key_, element, directive.value);
+            }
 
             return DirectiveHandlerReturn.Handled;
         });
@@ -251,84 +290,90 @@ export class JSONDirectiveHandler extends ExtendedDirectiveHandler{
                 return response;
             }
 
-            let options = {
-                raw: false,
-                array: false,
-                number: false,
-            };
-
-            directive.arg.options.forEach((option) => {
-                if (option in options){
-                    options[option] = true;
-                }
-            });
-            
-            XHRHelper.BindFetch({
-                region: region,
-                key: this.key_,
-                expression: directive.value,
-                expressionElement: element,
-                fetchMode: XHRHelper.ExtractFetchMode(directive.arg.options),
-                formatData: (data, mode) => {
-                    if (!data){
+            if (directive.arg.key !== 'delayed'){
+                let options = {
+                    raw: false,
+                    array: false,
+                    number: false,
+                };
+    
+                directive.arg.options.forEach((option) => {
+                    if (option in options){
+                        options[option] = true;
+                    }
+                });
+                
+                XHRHelper.BindFetch({
+                    region: region,
+                    key: this.key_,
+                    expression: directive.value,
+                    expressionElement: element,
+                    delayed: directive.arg.options.includes('delayed'),
+                    fetchMode: XHRHelper.ExtractFetchMode(directive.arg.options),
+                    formatData: (data, mode) => {
+                        if (!data){
+                            if (options.raw){
+                                return '';
+                            }
+                            
+                            if (options.array){
+                                return [];
+                            }
+    
+                            if (options.number){
+                                return 0;
+                            }
+    
+                            return ((mode === FetchMode.Replace) ? {} : []);
+                        }
+    
                         if (options.raw){
-                            return '';
+                            return Region.ToString(data);
+                        }
+    
+                        if (options.number){
+                            return (parseFloat(data) || 0);
                         }
                         
-                        if (options.array){
-                            return [];
+                        try{
+                            return JSON.parse(data);
                         }
-
-                        if (options.number){
-                            return 0;
-                        }
-
-                        return ((mode === FetchMode.Replace) ? {} : []);
-                    }
-
-                    if (options.raw){
-                        return Region.ToString(data);
-                    }
-
-                    if (options.number){
-                        return (parseFloat(data) || 0);
-                    }
-                    
-                    try{
-                        return JSON.parse(data);
-                    }
-                    catch{}
-
-                    return ((!options.array && mode === FetchMode.Replace) ? {} : []);
-                },
-                setData: (state, value, mode, regionId, scopeId) => {
-                    if (mode !== FetchMode.Replace){//Add to array
-                        if (Array.isArray(value)){
-                            if (mode === FetchMode.Append){
-                                Region.Get(regionId).GetChanges().AddComposed(`${value.length}`, `${scopeId}.data.push`, `${scopeId}.items`);
-                                (state.data as Array<any>).push(...value);
+                        catch{}
+    
+                        return ((!options.array && mode === FetchMode.Replace) ? {} : []);
+                    },
+                    setData: (state, value, mode, regionId, scopeId) => {
+                        if (mode !== FetchMode.Replace){//Add to array
+                            if (Array.isArray(value)){
+                                if (mode === FetchMode.Append){
+                                    Region.Get(regionId).GetChanges().AddComposed(`${value.length}`, `${scopeId}.data.push`, `${scopeId}.items`);
+                                    (state.data as Array<any>).push(...value);
+                                }
+                                else{//Prepend
+                                    Region.Get(regionId).GetChanges().AddComposed(`${value.length}`, `${scopeId}.data.unshift`, `${scopeId}.items`);
+                                    (state.data as Array<any>).unshift(...value);
+                                }
+                            }
+                            else if (mode === FetchMode.Append){
+                                Region.Get(regionId).GetChanges().AddComposed('1', `${scopeId}.data.push`, `${scopeId}.items`);
+                                (state.data as Array<any>).push(value);
                             }
                             else{//Prepend
-                                Region.Get(regionId).GetChanges().AddComposed(`${value.length}`, `${scopeId}.data.unshift`, `${scopeId}.items`);
-                                (state.data as Array<any>).unshift(...value);
+                                Region.Get(regionId).GetChanges().AddComposed('1', `${scopeId}.data.unshift`, `${scopeId}.items`);
+                                (state.data as Array<any>).unshift(value);
                             }
                         }
-                        else if (mode === FetchMode.Append){
-                            Region.Get(regionId).GetChanges().AddComposed('1', `${scopeId}.data.push`, `${scopeId}.items`);
-                            (state.data as Array<any>).push(value);
+                        else{//Replace
+                            state.data = value;
                         }
-                        else{//Prepend
-                            Region.Get(regionId).GetChanges().AddComposed('1', `${scopeId}.data.unshift`, `${scopeId}.items`);
-                            (state.data as Array<any>).unshift(value);
-                        }
-                    }
-                    else{//Replace
-                        state.data = value;
-                    }
-
-                    return true;
-                },
-            });
+    
+                        return true;
+                    },
+                });
+            }
+            else{
+                XHRHelper.BindDelayed(region, this.key_, element, directive.value);
+            }
 
             return DirectiveHandlerReturn.Handled;
         });

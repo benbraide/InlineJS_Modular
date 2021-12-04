@@ -7,11 +7,11 @@ import { ControlHelper, ControlItemInfo } from './control'
 export class IfDirectiveHandler extends DirectiveHandler{
     public constructor(){
         super('if', (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let info = ControlHelper.Init(region, element, directive.arg.options, (directive.arg.key === 'animate'), () => {
+            let info = ControlHelper.Init(this.key_, region, element, directive, () => {
                 if (itemInfo){
                     ControlHelper.RemoveItem(itemInfo, info);
                 }
-            }, Region.GetConfig().GetDirectiveName(this.key_));
+            });
 
             if (!info){
                 return DirectiveHandlerReturn.Handled;

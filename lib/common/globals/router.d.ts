@@ -1,4 +1,4 @@
-import { IRouterGlobalHandler, OnRouterLoadHandlerType, PathInfo, IBackPath } from '../typedefs';
+import { IRouterGlobalHandler, OnRouterLoadHandlerType, PathInfo, IBackPath, IModalGlobalHandler } from '../typedefs';
 import { ExtendedDirectiveHandler } from '../directives/extended/generic';
 import { GlobalHandler } from './generic';
 export interface PageOptions {
@@ -30,7 +30,7 @@ export declare class RegisterDirectiveHandler extends ExtendedDirectiveHandler {
 }
 export declare class LinkDirectiveHandler extends ExtendedDirectiveHandler {
     private router_;
-    constructor(router_: RouterGlobalHandler);
+    constructor(router_: RouterGlobalHandler, modal?: IModalGlobalHandler);
 }
 export declare class NavDirectiveHandler extends ExtendedDirectiveHandler {
     private router_;

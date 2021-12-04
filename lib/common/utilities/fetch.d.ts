@@ -4,15 +4,19 @@ export declare enum FetchMode {
     Append = 1,
     Prepend = 2
 }
+export interface FetchBeforePropSetHandlerValueInfo {
+    value: any;
+}
 export interface FetchHandlers {
     onLoad?: (data?: any) => void;
+    onReload?: () => void;
     onError?: (err: any) => void;
     onProgress?: (value: number) => void;
     onEmptyMount?: () => void;
     onPropGet?: (prop: string) => void | any;
     onPropSet?: (prop: string, value?: any) => void;
     onBeforePropGet?: (prop: string) => boolean;
-    onBeforePropSet?: (prop: string, value?: any) => boolean;
+    onBeforePropSet?: (prop: string, valueInfo?: FetchBeforePropSetHandlerValueInfo) => boolean;
     onBeforeRequest?: (url?: string, mode?: FetchMode) => void;
 }
 export interface FetchProps {

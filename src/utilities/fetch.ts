@@ -8,15 +8,20 @@ export enum FetchMode{
     Prepend,
 }
 
+export interface FetchBeforePropSetHandlerValueInfo{
+    value: any;
+}
+
 export interface FetchHandlers{
     onLoad?: (data?: any) => void;
+    onReload?: () => void;
     onError?: (err: any) => void;
     onProgress?: (value: number) => void;
     onEmptyMount?: () => void;
     onPropGet?: (prop: string) => void | any;
     onPropSet?: (prop: string, value?: any) => void;
     onBeforePropGet?: (prop: string) => boolean;
-    onBeforePropSet?: (prop: string, value?: any) => boolean;
+    onBeforePropSet?: (prop: string, valueInfo?: FetchBeforePropSetHandlerValueInfo) => boolean;
     onBeforeRequest?: (url?: string, mode?: FetchMode) => void;
 }
 
@@ -45,13 +50,18 @@ export class Fetch implements IFetch{
             }
         }, Object.keys(this.handlers_), (prop, value) => {
             if (typeof prop === 'string'){
-                if (this.handlers_.onBeforePropSet && !this.handlers_.onBeforePropSet(`handlers.${prop}`, value)){
+                let valueInfo: FetchBeforePropSetHandlerValueInfo = {
+                    value: value,
+                };
+                
+                let response = ((this.handlers_ && this.handlers_.onBeforePropSet) ? !!this.handlers_.onBeforePropSet(`handlers.${prop}`, valueInfo) : null);
+                if (response === false){
                     return false;
                 }
 
-                if (prop in this.handlers_ && value !== this.handlers_[prop]){
-                    this.handlers_[prop] = value;
-                    this.AlertAccess_(`handlers.${prop}`, false, value);
+                if (prop in this.handlers_ && valueInfo.value !== this.handlers_[prop]){
+                    this.handlers_[prop] = valueInfo.value;
+                    this.AlertAccess_(`handlers.${prop}`, false, valueInfo.value);
                 }
             }
             
@@ -322,15 +332,28 @@ export class Fetch implements IFetch{
     }
 
     private SetProp_(prop: string, value: any, force = false){
-        let response = ((this.handlers_ && this.handlers_.onBeforePropSet) ? !!this.handlers_.onBeforePropSet(prop, value) : null);
+        let valueInfo: FetchBeforePropSetHandlerValueInfo = {
+            value: value,
+        };
+        
+        let response = ((this.handlers_ && this.handlers_.onBeforePropSet) ? !!this.handlers_.onBeforePropSet(prop, valueInfo) : null);
         if (response === false){
             return false;
         }
         
+        value = valueInfo.value;
         if (prop === 'url'){
-            if (typeof value === 'string' && (value = value.trim()) !== this.url_ || force){
-                this.url_ = value;
-                this.AlertAccess_(prop, false, value);
+            if (typeof value === 'string'){
+                if ((value = value.trim()) !== this.url_ || force){
+                    this.url_ = value;
+                    this.AlertAccess_(prop, false, value);
+                }
+                else if (this.handlers_.onReload){
+                    try{
+                        this.handlers_.onReload();
+                    }
+                    catch{}
+                }
             }
             else if ((value === null || value === undefined) && (value !== this.url_ || force)){
                 this.url_ = value;

@@ -25,7 +25,7 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
     
     public constructor(key = 'form'){
         super(key, (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let response = ExtendedDirectiveHandler.CheckEvents(this.key_, region, element, directive, 'success', ['error', 'submit', 'save', 'load']);
+            let response = ExtendedDirectiveHandler.CheckEvents(this.key_, region, element, directive, 'success', ['error', 'submitting', 'submit', 'save', 'load']);
             if (response != DirectiveHandlerReturn.Nil){
                 return response;
             }
@@ -40,6 +40,7 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 error: false,
                 nexttick: false,
                 novalidate: false,
+                silent: false,
                 form: <HTMLFormElement>null,
             };
 
@@ -136,8 +137,6 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                             element.dispatchEvent(new CustomEvent(`${this.key_}.load`));
                         });
                     }
-
-                    
                 }
             }
             else{//Not a form
@@ -193,7 +192,12 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 }
             }, ['active', 'errors', 'element', 'submit']);
 
+            let noContent = (directive.value === Region.GetConfig().GetDirectiveName(this.key_));
             let evaluate = (myRegion: IRegion, ok: boolean, data: any) => {
+                if (noContent){
+                    return;
+                }
+                
                 try{
                     myRegion.GetState().PushContext('response', {
                         ok: ok,
@@ -239,6 +243,8 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 };
 
                 setActiveState(true);
+                element.dispatchEvent(new CustomEvent('form.submitting'));
+                
                 fetch(buildUrl(info), info).then(Fetch.HandleJsonResponse).then((response) => {
                     setActiveState(false);
                     
@@ -281,10 +287,10 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                             });
                         }
 
-                        if ('report' in response){
+                        if (!options.silent && 'report' in response){
                             Region.GetAlertHandler().Alert(response['report']);
                         }
-                        else if ('alert' in response){
+                        else if (!options.silent && 'alert' in response){
                             Region.GetAlertHandler().Alert(response['alert']);
                         }
 

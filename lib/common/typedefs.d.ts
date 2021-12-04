@@ -432,6 +432,17 @@ export interface IAuthGlobalHandler {
     User(key: string): any;
     BuildPath(path: string): string;
 }
+export interface IOverlayGlobalHandler {
+    SetZIndex(value: number): void;
+    GetZIndex(): number;
+    OffsetCount(offset: number): void;
+    AddClickHandler(handler: (bubbled?: boolean, e?: Event) => void): void;
+    RemoveClickHandler(handler: (bubbled?: boolean, e?: Event) => void): void;
+}
+export interface IModalGlobalHandler {
+    SetUrl(url: string): void;
+    SetVisibility(visible: boolean): void;
+}
 export interface IProduct {
     sku: string;
     title: string;

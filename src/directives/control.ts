@@ -1,8 +1,9 @@
-import { IRegion, IParsedAnimation } from '../typedefs'
+import { IRegion, IParsedAnimation, IDirective, DirectiveHandlerReturn } from '../typedefs'
 import { Region } from '../region'
 import { DirectiveHandler } from './generic'
 
 export interface ControlInfo{
+    key: string;
     regionId: string;
     template: HTMLTemplateElement;
     parent: HTMLElement;
@@ -22,8 +23,13 @@ export interface ControlItemInfo{
 }
 
 export class ControlHelper{
-    public static Init(region: IRegion, element: HTMLElement, options: Array<string>, animate: boolean, onUninit: () => void, directiveName?: string){
-        directiveName = (directiveName || 'x-if | x-each');
+    public static Init(key: string, region: IRegion, element: HTMLElement, directive: IDirective, onUninit: () => void, animate = false){
+        let response = DirectiveHandler.CheckEvents(key, region, element, directive, 'after.visibility', ['before.visibility']);
+        if (response != DirectiveHandlerReturn.Nil){
+            return null;
+        }
+        
+        let directiveName = (key ? Region.GetConfig().GetDirectiveName(key) : 'x-control');
         if (region.GetRootElement() === element){
             region.GetState().ReportError(`\'${directiveName}\' cannot be bound to the root element`);
             return null;
@@ -41,10 +47,11 @@ export class ControlHelper{
         }
 
         let info: ControlInfo = {
+            key: key,
             regionId: region.GetId(),
             template: element,
             parent: element.parentElement,
-            animator: region.ParseAnimation(options, null, animate),
+            animator: region.ParseAnimation(directive.arg.options, null, (animate || directive.arg.key === 'animate')),
             blueprint: (element.content.firstElementChild as HTMLElement),
         };
 
@@ -102,6 +109,22 @@ export class ControlHelper{
             if (!isCanceled && clone.parentElement){//Animation has ended
                 insert(clone, info, 0);
             }
+
+            if (!isCanceled){
+                info.template.dispatchEvent(new CustomEvent(`${info.key}.after.visibility`, {
+                    detail: {
+                        show: true,
+                        clone: clone,
+                    },
+                }));
+            }
+        }, () => {
+            info.template.dispatchEvent(new CustomEvent(`${info.key}.before.visibility`, {
+                detail: {
+                    show: true,
+                    clone: clone,
+                },
+            }));
         });
 
         return itemInfo;
@@ -124,6 +147,22 @@ export class ControlHelper{
                 itemInfo.clone.parentElement.removeChild(itemInfo.clone);
                 afterRemove();
             }
+
+            if (!isCanceled){
+                info.template.dispatchEvent(new CustomEvent(`${info.key}.after.visibility`, {
+                    detail: {
+                        show: false,
+                        clone: itemInfo.clone,
+                    },
+                }));
+            }
+        }, () => {
+            info.template.dispatchEvent(new CustomEvent(`${info.key}.before.visibility`, {
+                detail: {
+                    show: false,
+                    clone: itemInfo.clone,
+                },
+            }));
         });
     }
 }

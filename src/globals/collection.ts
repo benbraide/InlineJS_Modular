@@ -35,6 +35,10 @@ export class CollectionDirectiveHandler extends ExtendedDirectiveHandler{
                 return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.update`);
             }
 
+            if (directive.arg.key === 'insert' || directive.arg.key === 'delete'){
+                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.${directive.arg.key}`);
+            }
+
             return DirectiveHandlerReturn.Handled;
         });
     }
@@ -234,6 +238,19 @@ export class CollectionGlobalHandler<EntryType> extends GlobalHandler{
                     GlobalHandler.region_.GetChanges().AddComposed(`${index}.1.0`, `${this.scopeId_}.items.splice`, `${this.scopeId_}.items`);
                 });
             }
+
+            window.dispatchEvent(new CustomEvent(`${this.key_}.delete`, {
+                detail: {
+                    entry: entry,
+                },
+            }));
+
+            window.dispatchEvent(new CustomEvent(`${this.key_}.update`, {
+                detail: {
+                    action: 'delete',
+                    entry: entry,
+                },
+            }));
         }
         else if (index == -1){//Add to list
             this.items_.unshift(item);
@@ -255,10 +272,33 @@ export class CollectionGlobalHandler<EntryType> extends GlobalHandler{
             if (updates){
                 updates.push(idValue);
             }
+
+            window.dispatchEvent(new CustomEvent(`${this.key_}.insert`, {
+                detail: {
+                    entry: entry,
+                    quantity: item.quantity,
+                },
+            }));
+
+            window.dispatchEvent(new CustomEvent(`${this.key_}.update`, {
+                detail: {
+                    action: 'insert',
+                    entry: entry,
+                    quantity: item.quantity,
+                },
+            }));
         }
         else{//Alert
             GlobalHandler.region_.GetChanges().AddComposed('quantity', `${this.scopeId_}.items.${idValue}`);
             GlobalHandler.region_.GetChanges().AddComposed(idValue, `${this.scopeId_}.items`);
+
+            window.dispatchEvent(new CustomEvent(`${this.key_}.update`, {
+                detail: {
+                    action: 'increment',
+                    entry: entry,
+                    quantity: item.quantity,
+                },
+            }));
         }
 
         if (changes){

@@ -28,6 +28,8 @@ export class TimeagoDirectiveHandler extends ExtendedDirectiveHandler{
                 capitalized: false,
                 caps: false,
                 unoptimized: false,
+                short: false,
+                alt: false,
             };
 
             directive.arg.options.forEach((option) => {
@@ -45,7 +47,7 @@ export class TimeagoDirectiveHandler extends ExtendedDirectiveHandler{
                         label: label,
                     },
                 }));
-            }, (options.capitalized || options.caps), !options.unoptimized);
+            }, (options.capitalized || options.caps), !options.unoptimized, TimeagoGlobalHandler.GetLabelType(options.short, options.alt));
 
             let regionId = region.GetId(), scopeId = region.GenerateDirectiveScopeId(null, `_${this.key_}`), elementScope = region.AddElement(element, true);
             elementScope.locals[`\$${this.key_}`] = ExtendedDirectiveHandler.CreateProxy((prop) =>{
@@ -79,12 +81,12 @@ export interface TimeagoRenderInfo{
 }
 
 export type TimeagoRenderHandler = (label: string) => void;
+export type TimeagoLabelType = 'default' | 'short' | 'short_alt';
 
 interface TimeagoCheckpoint{
     value: number;
     label: string | Array<string>;
     next?: number;
-    plural?: string;
     append?: boolean;
 }
 
@@ -166,16 +168,15 @@ export class TimeagoGlobalHandler extends GlobalHandler{
             
             this.proxy_ = Region.CreateProxy((prop) => {
                 if (prop === 'format'){
-                    return (date: Date, withNextUpdate = true, capitalize = false) => {
-                        if (withNextUpdate){
-                            return this.Format(date, true, capitalize);
-                        }
-                        return this.Format(date, false, capitalize);
+                    return (date: Date, withNextUpdate = true, capitalize = false, labelType: TimeagoLabelType = 'default') => {
+                        return (withNextUpdate ? this.Format(date, true, capitalize, labelType) : this.Format(date, false, capitalize, labelType));
                     }
                 }
 
                 if (prop === 'render'){
-                    return (date: Date, handler: TimeagoRenderHandler, capitalize = false, optimized = true) => this.Render(date, handler, capitalize, optimized);
+                    return (date: Date, handler: TimeagoRenderHandler, capitalize = false, optimized = true, labelType: TimeagoLabelType = 'default') => {
+                        return this.Render(date, handler, capitalize, optimized, labelType);
+                    };
                 }
             }, ['format', 'render']);
         }, () => {
@@ -184,19 +185,19 @@ export class TimeagoGlobalHandler extends GlobalHandler{
         });
     }
 
-    public Format(date: Date, withNextUpdate: true, capitalize?: boolean): [string, number];
-    public Format(date: Date, withNextUpdate: false, capitalize?: boolean): string;
-    public Format(date: Date, withNextUpdate = true, capitalize = false): [string, number] | string{
+    public Format(date: Date, withNextUpdate: true, capitalize?: boolean, labelType?: TimeagoLabelType): [string, number];
+    public Format(date: Date, withNextUpdate: false, capitalize?: boolean, labelType?: TimeagoLabelType): string;
+    public Format(date: Date, withNextUpdate = true, capitalize = false, labelType: TimeagoLabelType = 'default'): [string, number] | string{
         let now = Date.now(), then = date.getTime();
         if (then <= now){
-            return this.FormatAgo_(Math.floor((now - then) / 1000), withNextUpdate, capitalize);
+            return this.FormatAgo_(Math.floor((now - then) / 1000), withNextUpdate, capitalize, labelType);
         }
         
         return (withNextUpdate ? ['', null] : '');
     }
 
-    public Render(date: Date, handler: TimeagoRenderHandler, capitalize = false, optimized = true): TimeagoRenderInfo{
-        let previousLabel: string = null, [label, next] = this.Format(date, true, capitalize), running = true, stopped = false, callHandler = () => {
+    public Render(date: Date, handler: TimeagoRenderHandler, capitalize = false, optimized = true, labelType: TimeagoLabelType = 'default'): TimeagoRenderInfo{
+        let previousLabel: string = null, [label, next] = this.Format(date, true, capitalize, labelType), running = true, stopped = false, callHandler = () => {
             previousLabel = label;
             label = null;
             
@@ -228,7 +229,7 @@ export class TimeagoGlobalHandler extends GlobalHandler{
             }
             
             let wasNull = !label;//Ensure 'pass' has been called
-            [label, next] = this.Format(date, true, capitalize);
+            [label, next] = this.Format(date, true, capitalize, labelType);
 
             setTimeout(onTimeout, (next * 1000));
             if (wasNull && label !== previousLabel){
@@ -248,7 +249,7 @@ export class TimeagoGlobalHandler extends GlobalHandler{
                     stopped = false;
                     if (!running){
                         running = true;
-                        [label, next] = this.Format(date, true, capitalize);
+                        [label, next] = this.Format(date, true, capitalize, labelType);
 
                         setTimeout(onTimeout,  (next * 1000));
                         scheduleHandlerCall();
@@ -258,7 +259,7 @@ export class TimeagoGlobalHandler extends GlobalHandler{
         };
     }
 
-    private FormatAgo_(seconds: number, withNextUpdate: boolean, capitalize: boolean): [string, number] | string{
+    private FormatAgo_(seconds: number, withNextUpdate: boolean, capitalize: boolean, labelType: TimeagoLabelType): [string, number] | string{
         let count = 0, matched = this.checkpoints_.find((checkpoint) => {
             if (checkpoint.value < 60){
                 return (checkpoint.value == 0 || checkpoint.value <= seconds);
@@ -266,7 +267,7 @@ export class TimeagoGlobalHandler extends GlobalHandler{
             return ((count = Math.floor(seconds / checkpoint.value)) >= 1);
         });
 
-        let label = this.BuildLabel_(matched, capitalize, count, '', ' ago');
+        let label = this.BuildLabel_(matched, capitalize, labelType, count, '', ' ago');
         if (!withNextUpdate){//Label only
             return label;
         }
@@ -282,22 +283,47 @@ export class TimeagoGlobalHandler extends GlobalHandler{
         return [label, (matched.value - (seconds % matched.value))];//Delay to next repeat
     }
 
-    private BuildLabel_(checkpoint: TimeagoCheckpoint, capitalize: boolean, count: number, prefix = '', suffix = ''){
-        let label: string;
-        if (typeof checkpoint.label === 'string'){
-            label = ((count > 1) ? (checkpoint.plural || `${checkpoint.label}s`) : checkpoint.label);
-            if (capitalize){
-                label = (label.substr(0, 1).toUpperCase() + label.substr(1));
-            }
+    private BuildLabel_(checkpoint: TimeagoCheckpoint, capitalize: boolean, labelType: TimeagoLabelType, count: number, prefix = '', suffix = ''){
+        let label = this.TransformLabel_(checkpoint.label, capitalize, labelType, count);
+        return ((checkpoint.append !== false && (prefix || suffix) && labelType !== 'short') ? `${prefix}${label}${suffix}` : label);
+    }
 
+    private TransformLabel_(checkpointLabel: string | Array<string>, capitalize: boolean, labelType: TimeagoLabelType, count: number){
+        let label: string, normalizedLabel: string;
+        if (typeof checkpointLabel === 'string'){
+            normalizedLabel = checkpointLabel;
+            label = (capitalize ? (checkpointLabel.substr(0, 1).toUpperCase() + checkpointLabel.substr(1)) : checkpointLabel);
             if (count > 0){
+                label = `${count} ${normalizedLabel}`;
                 label = `${count} ${label}`;
             }
         }
-        else{//String value
-            label = (capitalize ? checkpoint.label.map(item => (item.substr(0, 1).toUpperCase() + item.substr(1))).join(' ') : checkpoint.label.join(' '));
+        else{//Map value
+            normalizedLabel = checkpointLabel.join(' ');
+            label = (capitalize ? checkpointLabel.map(item => (item.substr(0, 1).toUpperCase() + item.substr(1))).join(' ') : checkpointLabel.join(' '));
         }
         
-        return ((checkpoint.append !== false && (prefix || suffix)) ? `${prefix}${label}${suffix}` : label);
+        if (labelType === 'short' || labelType === 'short_alt'){
+            if (normalizedLabel === 'just now' || normalizedLabel === 'right now'){
+                label = '0s';
+            }
+            else if (normalizedLabel === 'few seconds'){
+                label = '2s';
+            }
+            else{//Split and join
+                let parts = normalizedLabel.split(' ');
+                label = (parts[0] + parts[1].substr(0, 1));
+            }
+        }
+        
+        return label;
+    }
+
+    public static GetLabelType(short: boolean, alt = false): TimeagoLabelType{
+        if (short && alt){
+            return 'short_alt';
+        }
+        
+        return (short ? 'short' : 'default');
     }
 }
