@@ -294,8 +294,8 @@ export class TimeagoGlobalHandler extends GlobalHandler{
             normalizedLabel = checkpointLabel;
             label = (capitalize ? (checkpointLabel.substr(0, 1).toUpperCase() + checkpointLabel.substr(1)) : checkpointLabel);
             if (count > 0){
-                label = `${count} ${normalizedLabel}`;
-                label = `${count} ${label}`;
+                normalizedLabel = `${count} ${normalizedLabel}`;
+                label = ((count > 1) ? `${count} ${label}s` : `${count} ${label}`);
             }
         }
         else{//Map value

@@ -274,7 +274,7 @@ export interface IResizeObserver{
 
 export interface IAlertHandler{
     Alert(data: any): void;
-    Confirm(data: any, confirmed: () => void, canceled?: () => void): void;
+    Confirm(data: any, confirmed: () => void, canceled?: (buttonClicked?: boolean) => void): void;
     Prompt(data: any, callback: (response: any) => void): void;
     ServerError(err: any): void;
 }

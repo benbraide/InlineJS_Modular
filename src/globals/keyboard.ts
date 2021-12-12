@@ -1,5 +1,27 @@
+import { DirectiveHandlerReturn, IDirective, IRegion } from "../typedefs";
+import { ExtendedDirectiveHandler } from '../directives/extended/generic'
 import { ProxiedGlobalHandler } from './generic'
 import { Region } from '../region'
+
+export class KeyboardDirectiveHandler extends ExtendedDirectiveHandler{
+    public constructor(keyboard: KeyboardGlobalHandler){
+        super(keyboard.GetKey(), (region: IRegion, element: HTMLElement, directive: IDirective) => {
+            if (['down', 'up', 'inside'].includes(directive.arg.key)){
+                let regionId = region.GetId(), proxy = keyboard.Handle(regionId, element);
+                if (!proxy){
+                    return DirectiveHandlerReturn.Handled;
+                }
+
+
+                region.GetState().TrapGetAccess(() => {
+                    ExtendedDirectiveHandler.BlockEvaluate(Region.Get(regionId), element, `(${directive.value}) = ${proxy[directive.arg.key]}`);
+                }, true, element);
+            }
+            
+            return DirectiveHandlerReturn.Handled;
+        });
+    }
+}
 
 export class KeyboardGlobalHandler extends ProxiedGlobalHandler{
     public constructor(){
@@ -58,7 +80,7 @@ export class KeyboardGlobalHandler extends ProxiedGlobalHandler{
                 }
             };
 
-            proxy = Region.CreateProxy((prop) =>{
+            proxy = Region.CreateProxy((prop) => {
                 if (prop === 'inside'){
                     Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
                     if (!listening.inside){
@@ -125,6 +147,10 @@ export class KeyboardGlobalHandler extends ProxiedGlobalHandler{
             });
 
             return this.AddProxy(contextElement, proxy, region);
+        }, null, null, () => {
+            Region.GetDirectiveManager().AddHandler(new KeyboardDirectiveHandler(this));
+        }, () => {
+            Region.GetDirectiveManager().RemoveHandlerByKey(this.key_);
         });
     }
 }

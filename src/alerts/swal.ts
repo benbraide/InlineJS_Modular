@@ -16,7 +16,7 @@ export class SwalAlertHandler implements IAlertHandler{
         Swal.fire(data);
     }
 
-    public Confirm(data: any, confirmed: () => void, canceled?: () => void): void{
+    public Confirm(data: any, confirmed: () => void, canceled?: (buttonClicked?: boolean) => void): void{
         if (Region.IsObject(data)){
             data['icon'] = (data['icon'] || 'warning');
             data['title'] = (data['title'] || 'Please confirm your action');
@@ -42,7 +42,7 @@ export class SwalAlertHandler implements IAlertHandler{
                 confirmed();
             }
             else if (canceled){
-                canceled();
+                canceled(value.isDenied);
             }
         });
     }
