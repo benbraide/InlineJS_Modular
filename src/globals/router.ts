@@ -28,8 +28,18 @@ export interface IMiddleware{
     Handle(path?: PathInfo): void | boolean;
 }
 
+interface MountInfo{
+    scopeId: string;
+    type?: string;
+    element?: HTMLElement;
+    proxy?: any;
+    fetch?: (url: string, callback: (state?: boolean) => void) => void;
+}
+
 export class RouterDirectiveHandler extends ExtendedDirectiveHandler{
-    public constructor(router: RouterGlobalHandler){
+    private fetch_: Fetch;
+    
+    public constructor(router: RouterGlobalHandler, mountInfo: MountInfo, modal: IModalGlobalHandler = null){
         super(router.GetKey(), (region: IRegion, element: HTMLElement, directive: IDirective) => {
             if (!directive.arg || !directive.arg.key){
                 return DirectiveHandlerReturn.Handled;
@@ -43,314 +53,258 @@ export class RouterDirectiveHandler extends ExtendedDirectiveHandler{
                 return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.${directive.arg.key}`);
             }
 
-            return DirectiveHandlerReturn.Handled;
-        });
-    }
-}
-
-export class RegisterDirectiveHandler extends ExtendedDirectiveHandler{
-    public constructor(private router_: RouterGlobalHandler){
-        super(`${router_.GetKey()}.register`, (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let response = ExtendedDirectiveHandler.CheckEvents(this.key_, region, element, directive, 'load');
-            if (response != DirectiveHandlerReturn.Nil){
-                return response;
-            }
-
-            let elementScope = region.AddElement(element);
-            if (!elementScope){
-                return DirectiveHandlerReturn.Handled;    
-            }
-
-            let info: PageOptions = {
-                path: '',
-                name: null,
-                title: null,
-                middleware: null,
-                onLoad: null,
-            };
-            
-            let data = ExtendedDirectiveHandler.Evaluate(region, element, directive.value);
-            if (Region.IsObject(info)){
-                Object.entries(data).forEach(([key, value]) => {
-                    if (key in info){
-                        info[key] = value;
-                    }
-                });
-            }
-            else if (typeof data === 'string'){
-                info.path = data;
-            }
-
-            let id = this.router_.Register(info);
-            elementScope.uninitCallbacks.push(() => {
-                this.router_.Unregister(id);
-            });
-            
-            info.onLoad = (reloaded) => {
-                window.dispatchEvent(new CustomEvent(`${this.key_}.load`, {
-                    detail: {
-                        reloaded: reloaded,
-                    },
-                }));
-            };
-            
-            return DirectiveHandlerReturn.Handled;
-        });
-    }
-}
-
-export class LinkDirectiveHandler extends ExtendedDirectiveHandler{
-    public constructor(private router_: RouterGlobalHandler, modal: IModalGlobalHandler = null){
-        super(`${router_.GetKey()}.link`, (region: IRegion, element: HTMLElement, directive: IDirective) => {
             let elementScope = region.AddElement(element);
             if (!elementScope){
                 return DirectiveHandlerReturn.Handled;
             }
-            
-            let path = '', extractedPath: PathInfo = null, routerPath = this.router_.GetActivePage(), regionId = region.GetId();
-            let active = (extractedPath && routerPath && extractedPath.base === routerPath.base), scopeId = this.GenerateScopeId_(region);
 
-            let getPathFromElement = () => {
-                if (element instanceof HTMLAnchorElement){
-                    return this.router_.ProcessUrl(element.href);
-                }
-
-                return ((element instanceof HTMLFormElement) ? this.router_.ProcessUrl(element.action) : '');
-            };
-
-            let extractPathInfo = (targetPath = ''): PathInfo => {
-                targetPath = (targetPath || path || getPathFromElement());
-
-                let queryStartIndex = targetPath.indexOf('?');
-                return {
-                    base: ((queryStartIndex == -1) ? targetPath : targetPath.substr(0, queryStartIndex)),
-                    query: ((queryStartIndex == -1) ? '' : targetPath.substr(queryStartIndex + 1)),
+            if (directive.arg.key === 'register'){
+                let info: PageOptions = {
+                    path: '',
+                    name: null,
+                    title: null,
+                    middleware: null,
+                    onLoad: null,
                 };
-            };
-
-            let updateActive = () => {
-                if ((extractedPath && routerPath && extractedPath.base === routerPath.base) != active){
-                    active = !active;
-                    Region.Get(regionId).GetChanges().AddComposed('active', scopeId);
-                }
-            };
-
-            let onLoad = (path: PathInfo) => {
-                routerPath = path;
-                updateActive();
-            };
-
-            let shouldReload = directive.arg.options.includes('reload'), afterEvent: (e?: Event) => void = null, onEvent = (e: Event) => {
-                e.preventDefault();
-
-                let targetPath = (path || getPathFromElement());
-                if (modal && targetPath.startsWith('modal://')){
-                    modal.SetUrl(targetPath);
-                    return;
-                }
                 
-                extractedPath = extractPathInfo(targetPath);
-                updateActive();
-
-                if (afterEvent){
-                    afterEvent(e);
+                let data = ExtendedDirectiveHandler.Evaluate(region, element, directive.value);
+                if (Region.IsObject(data)){
+                    Object.entries(data).forEach(([key, value]) => {
+                        if (key in info){
+                            info[key] = value;
+                        }
+                    });
                 }
-
-                this.router_.Goto(extractedPath, () => {
-                    if (!shouldReload){//Scroll top
-                        window.scrollTo({ top: -window.scrollY, left: 0, behavior: 'smooth' });
-                        return false;
-                    }
-                    return true;
+                else if (typeof data === 'string'){
+                    info.path = data;
+                }
+    
+                let id = router.Register(info);
+                elementScope.uninitCallbacks.push(() => {
+                    router.Unregister(id);
                 });
-            };
-            
-            let bindEvent = () => {
-                if (element instanceof HTMLFormElement){
-                    element.addEventListener('submit', onEvent);
+                
+                info.onLoad = (reloaded) => {
+                    window.dispatchEvent(new CustomEvent(`${this.key_}.load`, {
+                        detail: {
+                            reloaded: reloaded,
+                        },
+                    }));
+                };
+            }
+            else if (directive.arg.key === 'link'){
+                let path = '', extractedPath: PathInfo = null, routerPath = router.GetActivePage(), regionId = region.GetId();
+                let active = (extractedPath && routerPath && extractedPath.base === routerPath.base), scopeId = this.GenerateScopeId_(region);
+
+                let getPathFromElement = () => {
+                    if (element instanceof HTMLAnchorElement){
+                        return router.ProcessUrl(element.href);
+                    }
+
+                    return ((element instanceof HTMLFormElement) ? router.ProcessUrl(element.action) : '');
+                };
+
+                let extractPathInfo = (targetPath = ''): PathInfo => {
+                    targetPath = (targetPath || path || getPathFromElement());
+
+                    let queryStartIndex = targetPath.indexOf('?');
+                    return {
+                        base: ((queryStartIndex == -1) ? targetPath : targetPath.substring(0, (queryStartIndex + 1))),
+                        query: ((queryStartIndex == -1) ? '' : targetPath.substring(queryStartIndex + 1)),
+                    };
+                };
+
+                let updateActive = () => {
+                    if ((extractedPath && routerPath && extractedPath.base === routerPath.base) != active){
+                        active = !active;
+                        Region.Get(regionId).GetChanges().AddComposed('active', scopeId);
+                    }
+                };
+
+                let onLoad = (path: PathInfo) => {
+                    routerPath = path;
+                    updateActive();
+                };
+
+                let shouldReload = directive.arg.options.includes('reload'), afterEvent: (e?: Event) => void = null, onEvent = (e: Event) => {
+                    e.preventDefault();
+
+                    let targetPath = (path || getPathFromElement());
+                    if (modal && targetPath.startsWith('modal://')){
+                        modal.SetUrl(targetPath);
+                        return;
+                    }
+                    
+                    extractedPath = extractPathInfo(targetPath);
+                    updateActive();
+
+                    if (afterEvent){
+                        afterEvent(e);
+                    }
+
+                    router.Goto(extractedPath, () => {
+                        if (!shouldReload){//Scroll top
+                            window.scrollTo({ top: -window.scrollY, left: 0, behavior: 'smooth' });
+                            return false;
+                        }
+                        return true;
+                    });
+                };
+                
+                let bindEvent = () => {
+                    if (element instanceof HTMLFormElement){
+                        element.addEventListener('submit', onEvent);
+                        return {
+                            undo: () => {
+                                element.removeEventListener('submit', onEvent);
+                            },
+                            after: () => {
+                                let query = '';
+                                (new FormData(element)).forEach((value, key) => {
+                                    query = (query ? `${query}&${key}=${value.toString()}` : `${key}=${value.toString()}`);
+                                });
+                                
+                                if (query){//Append query
+                                    extractedPath.query = (extractedPath.query ? `${extractedPath.query}&${query}` : query);
+                                }
+                            },
+                        };
+                    }
+
+                    element.addEventListener('click', onEvent);
                     return {
                         undo: () => {
-                            element.removeEventListener('submit', onEvent);
+                            element.removeEventListener('click', onEvent);
                         },
-                        after: () => {
-                            let query = '';
-                            (new FormData(element)).forEach((value, key) => {
-                                query = (query ? `${query}&${key}=${value.toString()}` : `${key}=${value.toString()}`);
-                            });
-                            
-                            if (query){//Append query
-                                extractedPath.query = (extractedPath.query ? `${extractedPath.query}&${query}` : query);
-                            }
-                        },
+                        after: null,
                     };
-                }
-
-                element.addEventListener('click', onEvent);
-                return {
-                    undo: () => {
-                        element.removeEventListener('click', onEvent);
-                    },
-                    after: null,
                 };
-            };
 
-            if (directive.value !== Region.GetConfig().GetDirectiveName(this.key_)){
-                region.GetState().TrapGetAccess(() => {
-                    let data = ExtendedDirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value);
-                    path = ((typeof data === 'string') ? this.router_.ProcessUrl(data.trim()) : '');
-                    extractedPath = extractPathInfo();
-                    updateActive();
-                }, true, element);
-            }
-            
-            let bindInfo = bindEvent();
-            afterEvent = bindInfo.after;
+                if (directive.value !== Region.GetConfig().GetDirectiveName(this.key_)){
+                    region.GetState().TrapGetAccess(() => {
+                        let data = ExtendedDirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value);
+                        path = ((typeof data === 'string') ? router.ProcessUrl(data.trim()) : '');
+                        extractedPath = extractPathInfo();
+                        updateActive();
+                    }, true, element);
+                }
+                
+                let bindInfo = bindEvent();
+                afterEvent = bindInfo.after;
 
-            let checkActive = directive.arg.options.includes('active');
-            if (checkActive){
-                this.router_.BindOnLoad(onLoad);
-            }
-
-            elementScope.uninitCallbacks.push(() => {
-                bindInfo.undo();
+                let checkActive = directive.arg.options.includes('active');
                 if (checkActive){
-                    this.router_.UnbindOnLoad(onLoad);
+                    router.BindOnLoad(onLoad);
                 }
-            });
 
-            elementScope.locals['$link'] = Region.CreateProxy((prop) => {
-                if (prop === 'active'){
-                    Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
-                    return active;
+                elementScope.uninitCallbacks.push(() => {
+                    bindInfo.undo();
+                    if (checkActive){
+                        router.UnbindOnLoad(onLoad);
+                    }
+                });
+
+                elementScope.locals['$link'] = Region.CreateProxy((prop) => {
+                    if (prop === 'active'){
+                        Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
+                        return active;
+                    }
+                }, ['active']);
+            }
+            else if (directive.arg.key === 'nav'){
+                directive.arg.key = 'link';
+                element.querySelectorAll('a').forEach(item => this.Handle(region, item, directive));
+                element.querySelectorAll('form').forEach(item => this.Handle(region, item, directive));
+            }
+            else if (directive.arg.key === 'back'){
+                element.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    router.Goto(new BackPath());
+                });
+            }
+            else if (directive.arg.key === 'mount'){
+                if (directive.arg.options.includes('load')){
+                    return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.mount.load`);
                 }
-            }, ['active']);
-            
-            return DirectiveHandlerReturn.Handled;
-        });
-    }
-}
-
-export class NavDirectiveHandler extends ExtendedDirectiveHandler{
-    private link_: LinkDirectiveHandler;
     
-    public constructor(private router_: RouterGlobalHandler){
-        super(`${router_.GetKey()}.nav`, (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            element.querySelectorAll('a').forEach(item => this.link_.Handle(region, item, directive));
-            element.querySelectorAll('form').forEach(item => this.link_.Handle(region, item, directive));
-            return DirectiveHandlerReturn.Handled;
-        });
+                if (directive.arg.options.includes('error')){
+                    return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.mount.error`);
+                }
 
-        this.link_ = new LinkDirectiveHandler(this.router_);
-    }
-}
+                mountInfo.element = document.createElement(mountInfo.type || 'div');
+                element.parentElement.insertBefore(mountInfo.element, element);
 
-export class BackDirectiveHandler extends ExtendedDirectiveHandler{
-    public constructor(private router_: RouterGlobalHandler){
-        super(`${router_.GetKey()}.back`, (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            element.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.router_.Goto(new BackPath());
-            });
-            return DirectiveHandlerReturn.Handled;
-        });
-    }
-}
+                let lastCallback: (state?: boolean) => void = null;
+                mountInfo.fetch = (url, callback) => {
+                    lastCallback = callback;
+                    this.fetch_.props.url = url;
+                    this.fetch_.Get();
+                };
 
-interface MountInfo{
-    scopeId: string;
-    type?: string;
-    element?: HTMLElement;
-    proxy?: any;
-    fetch?: (url: string, callback: (state?: boolean) => void) => void;
-}
+                let state = {
+                    active: false,
+                    progress: 0,
+                };
 
-export class MountDirectiveHandler extends ExtendedDirectiveHandler{
-    private fetch_: Fetch;
-    
-    public constructor(private router_: RouterGlobalHandler, private info_: MountInfo){
-        super(`${router_.GetKey()}.mount`, (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            directive.arg.key = Region.GetProcessor().GetCamelCaseDirectiveName(directive.arg.key);
-            if (directive.arg.key === 'load' || ExtendedDirectiveHandler.IsEventRequest(directive.arg.key)){
-                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.load`);
+                let regionId = region.GetId(), setState = (key: string, value: any) => {
+                    if (key in state && !Region.IsEqual(state[key], value)){
+                        state[key] = value;
+                        Region.Get(regionId).GetChanges().AddComposed(key, `${mountInfo.scopeId}.mount`);
+                    }
+                };
+
+                this.fetch_ = new Fetch(null, mountInfo.element, {
+                    onBeforeRequest: () => {
+                        setState('active', true);
+                        setState('progress', 0);
+                    },
+                    onLoad: () => {
+                        setState('active', false);
+                        setState('progress', 100);
+                        
+                        window.scrollTo({ top: 0, left: 0 });
+                        [...mountInfo.element.attributes].forEach(attr => mountInfo.element.removeAttribute(attr.name));
+                        (new Bootstrap()).Attach(mountInfo.element);
+
+                        window.dispatchEvent(new CustomEvent(`${this.key_}.mount.load`));
+                        if (lastCallback){
+                            lastCallback(true);
+                        }
+                    },
+                    onError: (err) => {
+                        setState('active', false);
+                        setState('progress', 100);
+                        
+                        window.dispatchEvent(new CustomEvent(`${this.key_}.mount.error`, {
+                            detail: { error: err },
+                        }));
+
+                        if (lastCallback){
+                            lastCallback(false);
+                        }
+                    },
+                    onProgress: (value) => {
+                        setState('progress', value);
+                    },
+                });
+
+                region.GetElementScope(element).uninitCallbacks.push(() => {
+                    mountInfo = null;
+                    this.fetch_ = null;
+                });
+
+                mountInfo.proxy = Region.CreateProxy((prop) => {
+                    if (prop in state){
+                        Region.Get(regionId).GetChanges().AddGetAccess(`${mountInfo.scopeId}.mount.${prop}`);
+                        return state[prop];
+                    }
+
+                    if (prop === 'element'){
+                        return mountInfo.element;
+                    }
+                }, [...Object.keys(state), 'element']);
             }
 
-            if (directive.arg.key === 'error'){
-                return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.error`);
-            }
-            
-            this.info_.element = document.createElement(this.info_.type || 'div');
-            element.parentElement.insertBefore(this.info_.element, element);
-
-            let lastCallback: (state?: boolean) => void = null;
-            this.info_.fetch = (url, callback) => {
-                lastCallback = callback;
-                this.fetch_.props.url = url;
-                this.fetch_.Get();
-            };
-
-            let state = {
-                active: false,
-                progress: 0,
-            };
-
-            let regionId = region.GetId(), setState = (key: string, value: any) => {
-                if (key in state && !Region.IsEqual(state[key], value)){
-                    state[key] = value;
-                    Region.Get(regionId).GetChanges().AddComposed(key, `${this.info_.scopeId}.mount`);
-                }
-            };
-
-            this.fetch_ = new Fetch(null, this.info_.element, {
-                onBeforeRequest: () => {
-                    setState('active', true);
-                    setState('progress', 0);
-                },
-                onLoad: () => {
-                    setState('active', false);
-                    setState('progress', 100);
-                    
-                    window.scrollTo({ top: 0, left: 0 });
-                    [...this.info_.element.attributes].forEach(attr => this.info_.element.removeAttribute(attr.name));
-                    (new Bootstrap()).Attach(this.info_.element);
-
-                    window.dispatchEvent(new CustomEvent(`${this.key_}.load`));
-                    if (lastCallback){
-                        lastCallback(true);
-                    }
-                },
-                onError: (err) => {
-                    setState('active', false);
-                    setState('progress', 100);
-                    
-                    window.dispatchEvent(new CustomEvent(`${this.key_}.error`, {
-                        detail: { error: err },
-                    }));
-
-                    if (lastCallback){
-                        lastCallback(false);
-                    }
-                },
-                onProgress: (value) => {
-                    setState('progress', value);
-                },
-            });
-
-            region.GetElementScope(element).uninitCallbacks.push(() => {
-                this.info_ = null;
-                this.fetch_ = null;
-            });
-
-            this.info_.proxy = Region.CreateProxy((prop) => {
-                if (prop in state){
-                    Region.Get(regionId).GetChanges().AddGetAccess(`${this.info_.scopeId}.mount.${prop}`);
-                    return state[prop];
-                }
-
-                if (prop === 'element'){
-                    return this.info_.element;
-                }
-            }, [...Object.keys(state), 'element']);
-            
             return DirectiveHandlerReturn.Handled;
         });
     }
@@ -377,21 +331,16 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
     private currentQuery_: Record<string, Array<string> | string> = null;
     private currentTitle_ = '';
     
-    public constructor(private middlewares_ = new Array<IMiddleware>(), private ajaxPrefix_ = 'ajax', mountElementType = ''){
+    public constructor(private middlewares_ = new Array<IMiddleware>(), modal: IModalGlobalHandler = null, private ajaxPrefix_ = 'ajax', mountElementType = ''){
         super('router', null, null, () => {
             this.mountInfo_ = {
                 scopeId: this.scopeId_,
                 type: mountElementType,
             };
 
-            Region.GetDirectiveManager().AddHandler(new RouterDirectiveHandler(this));
-            Region.GetDirectiveManager().AddHandler(new RegisterDirectiveHandler(this));
-            Region.GetDirectiveManager().AddHandler(new LinkDirectiveHandler(this));
-            Region.GetDirectiveManager().AddHandler(new NavDirectiveHandler(this));
-            Region.GetDirectiveManager().AddHandler(new BackDirectiveHandler(this));
-            Region.GetDirectiveManager().AddHandler(new MountDirectiveHandler(this, this.mountInfo_));
-
+            Region.GetDirectiveManager().AddHandler(new RouterDirectiveHandler(this, this.mountInfo_, modal));
             window.addEventListener('popstate', this.onEvent_);
+
             this.proxy_ = Region.CreateProxy((prop) => {
                 if (prop === 'doMount'){
                     return () => this.Mount();
@@ -451,13 +400,7 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
             this.proxy_ = null;
             window.removeEventListener('popstate', this.onEvent_);
             
-            Region.GetDirectiveManager().RemoveHandlerByKey(`${this.key_}.mount`);
-            Region.GetDirectiveManager().RemoveHandlerByKey(`${this.key_}.back`);
-            Region.GetDirectiveManager().RemoveHandlerByKey(`${this.key_}.nav`);
-            Region.GetDirectiveManager().RemoveHandlerByKey(`${this.key_}.link`);
-            Region.GetDirectiveManager().RemoveHandlerByKey(`${this.key_}.register`);
             Region.GetDirectiveManager().RemoveHandlerByKey(this.key_);
-
             this.mountInfo_ = null;
         });
 

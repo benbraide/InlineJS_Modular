@@ -390,6 +390,25 @@ export interface IFetch {
     EndWatch(): void;
     Destroy(): void;
 }
+export declare type ResourceHandlerType = (data?: any) => void;
+export interface ResourceOptions {
+    type: 'link' | 'script' | 'data';
+    attribute: 'href' | 'src' | 'json' | 'text';
+    target: 'head' | 'body' | null;
+    path: string;
+    additionalAttributes?: Record<string, string>;
+}
+export interface ResourceMixedItemInfo {
+    type: 'link' | 'script' | 'data';
+    url: string;
+}
+export interface IResource {
+    ProcessUrl(url: string): string;
+    GetStyle(url: string | Array<string>, handler: ResourceHandlerType, concurrent?: boolean, attributes?: Record<string, string>): void;
+    GetScript(url: string | Array<string>, handler: ResourceHandlerType, concurrent?: boolean, attributes?: Record<string, string>): void;
+    GetData(url: string | Array<string>, handler: ResourceHandlerType, concurrent?: boolean, json?: boolean): void;
+    GetMixed(items: ResourceMixedItemInfo | string | Array<ResourceMixedItemInfo | string>, handler: ResourceHandlerType, concurrent?: boolean, attributes?: Record<string, string>): void;
+}
 export interface Point {
     x: number;
     y: number;

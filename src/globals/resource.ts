@@ -1,10 +1,10 @@
-import { DirectiveHandlerReturn, IDirective, IRegion } from "../typedefs";
+import { DirectiveHandlerReturn, IDirective, IRegion, IResource, ResourceOptions, ResourceHandlerType, ResourceMixedItemInfo } from "../typedefs";
 import { Region } from "../region";
 import { GlobalHandler } from "./generic";
 import { DirectiveHandler } from "../directives/generic";
 import { ControlHelper, ControlItemInfo } from '../directives/control'
 import { ExtendedDirectiveHandler } from '../directives/extended/generic'
-import { Resource, ResourceOptions, ResourceHandlerType, ResourceMixedItemInfo } from "../utilities/resource";
+import { Resource } from "../utilities/resource";
 
 export class ResourceDirectiveHandler extends ExtendedDirectiveHandler{
     public constructor(resource: ResourceGlobalHandler){
@@ -98,7 +98,7 @@ export class ResourceDirectiveHandler extends ExtendedDirectiveHandler{
     }
 }
 
-export class ResourceGlobalHandler extends GlobalHandler{
+export class ResourceGlobalHandler extends GlobalHandler implements IResource{
     private resource_ = new Resource();
     
     public constructor(){

@@ -134,6 +134,7 @@ export class Region implements IRegion{
     private doneInit_ = false;
     private scopes_: Record<string, object> = {};
     private elementScopes_: Record<string, IElementScope> = {};
+    private elementScopeList_ = new Array<IElementScope>();
     private lastElementId_: number = null;
     private state_: IState;
     private changes_: IChanges;
@@ -303,7 +304,7 @@ export class Region implements IRegion{
     }
 
     public GetElementScope(element: HTMLElement | string | true | RootElement): IElementScope{
-        let key: string;
+        let key = '', supportsAttributes = true;
         if (typeof element === 'string'){
             key = element;
         }
@@ -313,11 +314,12 @@ export class Region implements IRegion{
         else if (element instanceof RootElement){
             key = this.rootElement_.getAttribute(Region.GetElementKeyName());
         }
-        else if (element && 'getAttribute' in element){//HTMLElement
+        else if ((supportsAttributes = Region.SupportsAttributes(element))){//Element
             key = element.getAttribute(Region.GetElementKeyName());
         }
-        else{//Unknown
-            key = '';
+
+        if (!key && !supportsAttributes){//Use list
+            return (this.elementScopeList_.find(scope => (scope.element === element)) || null);
         }
 
         return ((key && key in this.elementScopes_) ? this.elementScopes_[key] : null);
@@ -476,16 +478,7 @@ export class Region implements IRegion{
             return null;
         }
 
-        let id: number;
-        if (this.lastElementId_ === null){
-            id = (this.lastElementId_ = 0);
-        }
-        else{
-            id = ++this.lastElementId_;
-        }
-
-        let key = `${this.id_}.${id}`;
-        (this.elementScopes_[key] as IElementScope) = {
+        let id = ((this.lastElementId_ === null) ? (this.lastElementId_ = 0) : ++this.lastElementId_), key = `${this.id_}.${id}`, scope: IElementScope = {
             key: key,
             element: element,
             locals: {},
@@ -506,8 +499,15 @@ export class Region implements IRegion{
             controlCount: 0,
         };
 
-        element.setAttribute(Region.GetElementKeyName(), key);
-        return this.elementScopes_[key];
+        if (Region.SupportsAttributes(element)){
+            this.elementScopes_[key] = scope;
+            element.setAttribute(Region.GetElementKeyName(), key);
+        }
+        else{//Use list
+            this.elementScopeList_.push(scope);
+        }
+
+        return scope;
     }
     
     public RemoveElement(element: HTMLElement | string, preserve = false): void{
@@ -560,7 +560,13 @@ export class Region implements IRegion{
                     }
                 });
 
-                delete this.elementScopes_[scope.key];
+                if (scope.key in this.elementScopes_){
+                    delete this.elementScopes_[scope.key];
+                }
+                else{//Use list
+                    this.elementScopeList_.splice(this.elementScopeList_.indexOf(scope), 1);
+                }
+                
                 if (scope.element === this.rootElement_){//Remove from map
                     Region.hooks_.forEach((hook) => {
                         try{
@@ -598,16 +604,7 @@ export class Region implements IRegion{
     }
 
     public ElementIsContained(element: HTMLElement | string, checkDocument = true): boolean{
-        if (typeof element === 'string'){
-            return (element && element in this.elementScopes_);
-        }
-        
-        if (!element || (checkDocument && !document.contains(element))){
-            return false;
-        }
-        
-        let key = element.getAttribute(Region.GetElementKeyName());
-        return ((key && key in this.elementScopes_) || this.ElementIsContained(element, false));
+        return (this.GetElementScope(element) && (!checkDocument || typeof element === 'string' || document.contains(element)));
     }
     
     public ElementExists(element: HTMLElement | string): boolean{
@@ -959,6 +956,10 @@ export class Region implements IRegion{
                 }
             });
         }
+    }
+
+    public static SupportsAttributes(element: any){
+        return (element && 'getAttribute' in element && 'setAttribute' in element);
     }
 
     public static IsObject(target: any){

@@ -1,24 +1,11 @@
-export type ResourceHandlerType = (data?: any) => void;
-
-export interface ResourceOptions{
-    type: 'link' | 'script' | 'data';
-    attribute: 'href' | 'src' | 'json' | 'text';
-    target: 'head' | 'body' | null;
-    path: string;
-    additionalAttributes?: Record<string, string>;
-}
+import { IResource, ResourceHandlerType, ResourceOptions, ResourceMixedItemInfo } from "../typedefs";
 
 export interface ResourceInfo{
     callbacks: Array<() => void>;
     data: any;
 }
 
-export interface ResourceMixedItemInfo{
-    type: 'link' | 'script' | 'data';
-    url: string;
-}
-
-export class Resource{
+export class Resource implements IResource{
     private origin_: string;
 
     private absoluteUrlTest_ = new RegExp('^(?:[a-z]+:)?//', 'i');

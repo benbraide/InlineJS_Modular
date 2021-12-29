@@ -280,4 +280,18 @@ describe('x-attr directive', () => {
     
         expect(document.querySelector('svg').getAttribute('viewBox')).equal('0 0 42 42');
     });
+
+    it('names can contain numbers', () => {
+        document.body.innerHTML = `
+            <svg x-data>
+                <line x1="1" y1="2" :x2="3" x-attr:y2="4" />
+            </svg>
+        `;
+    
+        let bootstrap = new Bootstrap();
+        bootstrap.Attach();
+    
+        expect(document.querySelector('line').getAttribute('x2')).equal('3');
+        expect(document.querySelector('line').getAttribute('y2')).equal('4');
+    });
 });

@@ -8,6 +8,7 @@ export class TextHelper{
         let onChange: (value: any) => void, regionId = region.GetId(), options = {
             ancestor: -1,
             lazy: false,
+            comma: false,
             float: false,
             fixed: false,
             fixedPoint: 0,
@@ -130,8 +131,24 @@ export class TextHelper{
 
         let lastValue = null, step = (value: any, fraction: number) => {
             lastValue = stepValue(value, lastValue, fraction);
-            if (typeof lastValue === 'number' && options.float && options.fixed){
-                onChange((Math.round(lastValue * 100) / 100).toFixed(options.fixedPoint));
+            if (typeof lastValue === 'number' && ((options.float && options.fixed) || options.comma)){
+                let computed = ((options.float && options.fixed) ? (Math.round(lastValue * 100) / 100).toFixed(options.fixedPoint) : lastValue.toString());
+                if (options.comma){
+                    let pointIndex = computed.indexOf('.'), beforePoint: string, afterPoint: string;
+                    if (pointIndex == -1){
+                        beforePoint = computed.substring(0, (pointIndex - 1));
+                        afterPoint = computed.substring(pointIndex + 1);
+                    }
+                    else{
+                        beforePoint = computed;
+                        afterPoint = '';
+                    }
+
+                    beforePoint = beforePoint.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                    computed = (afterPoint ? `${beforePoint}.${afterPoint}` : beforePoint);
+                }
+                
+                onChange(computed);
             }
             else{
                 onChange(lastValue);

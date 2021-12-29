@@ -1,10 +1,11 @@
+import { IResource, ResourceOptions, ResourceHandlerType, ResourceMixedItemInfo } from "../typedefs";
 import { GlobalHandler } from "./generic";
 import { ExtendedDirectiveHandler } from '../directives/extended/generic';
-import { Resource, ResourceOptions, ResourceHandlerType, ResourceMixedItemInfo } from "../utilities/resource";
+import { Resource } from "../utilities/resource";
 export declare class ResourceDirectiveHandler extends ExtendedDirectiveHandler {
     constructor(resource: ResourceGlobalHandler);
 }
-export declare class ResourceGlobalHandler extends GlobalHandler {
+export declare class ResourceGlobalHandler extends GlobalHandler implements IResource {
     private resource_;
     constructor();
     GetHandle(): Resource;

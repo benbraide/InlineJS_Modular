@@ -37,6 +37,7 @@ export declare class Region implements IRegion {
     private doneInit_;
     private scopes_;
     private elementScopes_;
+    private elementScopeList_;
     private lastElementId_;
     private state_;
     private changes_;
@@ -149,6 +150,7 @@ export declare class Region implements IRegion {
     static AddPostProcessCallback(callback: () => void, forced?: boolean): void;
     static TraversePostProcessCallbacks(handler: (callback: () => void) => void): void;
     static ExecutePostProcessCallbacks(pop?: boolean): void;
+    static SupportsAttributes(element: any): boolean;
     static IsObject(target: any): boolean;
     static IsEqual(first: any, second: any): boolean;
     static DeepCopy(target: any): any;

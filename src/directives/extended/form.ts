@@ -3,9 +3,17 @@ import { Region } from '../../region'
 import { ExtendedDirectiveHandler } from '../extended/generic'
 import { Fetch } from '../../utilities/fetch';
 
+interface IFormMiddlewareDataInfo{
+    data: any;
+    evaluatedData?: any;
+    evaluate: boolean;
+    evaluated?: boolean;
+    source?: HTMLElement;
+}
+
 export interface IFormMiddleware{
     GetKey(): string;
-    Handle(region?: IRegion, element?: HTMLElement): void | boolean | Promise<void | boolean>;
+    Handle(data?: any, region?: IRegion, element?: HTMLElement): void | boolean | Promise<void | boolean>;
 }
 
 export class ConfirmFormMiddleware implements IFormMiddleware{
@@ -13,9 +21,9 @@ export class ConfirmFormMiddleware implements IFormMiddleware{
         return 'confirm';
     }
 
-    Handle(): void | boolean | Promise<void | boolean>{
+    Handle(data?: any): void | boolean | Promise<void | boolean>{
         return new Promise((resolve) => {
-            Region.GetAlertHandler().Confirm({}, () => resolve(true), () => resolve(false));
+            Region.GetAlertHandler().Confirm((data || {}), () => resolve(true), () => resolve(false));
         });
     }
 }
@@ -28,6 +36,23 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
             let response = ExtendedDirectiveHandler.CheckEvents(this.key_, region, element, directive, 'success', ['error', 'submitting', 'submit', 'save', 'load']);
             if (response != DirectiveHandlerReturn.Nil){
                 return response;
+            }
+
+            if (directive.arg.key in this.middlewares_){//Bind data
+                let scope = region.GetLocal(element, `\$${this.key_}`, true);
+                if (scope){//Bind data
+                    scope.bindMiddlewareData(directive.arg.key, directive.value, true);
+                    if (!region.GetLocal(element, `#${this.key_}.bound.data`, true)){
+                        let elementScope = region.AddElement(element, true);
+                        if (elementScope){//Unbind all
+                            elementScope.locals[`#${this.key_}.bound.data`] = true;
+                            elementScope.uninitCallbacks.push(() => {
+                                scope.unbindMiddlewareData(element);
+                            });
+                        }
+                    }
+                }
+                return DirectiveHandlerReturn.Handled;
             }
             
             let regionId = region.GetId(), scopeId = region.GenerateDirectiveScopeId(null, `_${this.key_}`), options = {
@@ -145,7 +170,7 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 save = null;
             }
 
-            let active = false, errors = {}, setActiveState = (state: boolean) => {
+            let active = false, errors = {}, middlewareData: Record<string, IFormMiddlewareDataInfo> = {}, setActiveState = (state: boolean) => {
                 if (active != state){
                     active = state;
                     Region.Get(regionId).GetChanges().AddComposed('active', scopeId);
@@ -190,7 +215,28 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                         }
                     };
                 }
-            }, ['active', 'errors', 'element', 'submit']);
+
+                if (prop === 'bindMiddlewareData'){
+                    return (middleware: string, data: any, source?: HTMLElement, evaluate = false) => {
+                        middlewareData[middleware] = { data, evaluate, source };
+                    };
+                }
+
+                if (prop === 'unbindMiddlewareData'){
+                    return (target: string | HTMLElement) => {
+                        if (typeof target !== 'string'){
+                            Object.entries(middlewareData).forEach(([key, value]) => {
+                                if (value.source === target){
+                                    delete middlewareData[key];
+                                }
+                            });
+                        }
+                        else{//Unbind single
+                            delete middlewareData[target];
+                        }
+                    };
+                }
+            }, ['active', 'errors', 'element', 'submit', 'bindMiddlewareData', 'unbindMiddlewareData']);
 
             let noContent = (directive.value === Region.GetConfig().GetDirectiveName(this.key_));
             let evaluate = (myRegion: IRegion, ok: boolean, data: any) => {
@@ -374,11 +420,38 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 });
             };
 
+            let resolveMiddlewareData = (myRegion: IRegion, key: string) => {
+                if (!(key in middlewareData)){
+                    return null;
+                }
+                
+                let info = middlewareData[key];
+                if (info.evaluated){
+                    return info.evaluatedData;
+                }
+                
+                info.evaluated = true;//Prvent further evaluations
+                if (info.evaluate && typeof info.data === 'string'){
+                    myRegion.GetState().TrapGetAccess(() => {
+                        if (!(key in middlewareData)){
+                            return false;
+                        }
+                        
+                        info.evaluatedData = myRegion.GetEvaluator().Evaluate(myRegion.GetId(), (info.source || element), info.data);
+                    }, true, (info.source || element));
+                }
+                else{//No evaluation
+                    info.evaluatedData = info.data;
+                }
+                
+                return info.evaluatedData;
+            };
+
             let runMiddlewares = async (callback: () => void) => {
                 let myRegion = Region.Get(regionId);
                 for (let middleware of middlewares){
                     try{
-                        let result = middleware.Handle(myRegion, element);
+                        let result = middleware.Handle(resolveMiddlewareData(myRegion, middleware.GetKey()), myRegion, element);
                         let status = ((result instanceof Promise) ? await result : result);
                         if (status === false){//Rejected
                             return;

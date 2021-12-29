@@ -21,26 +21,6 @@ export declare class BackPath implements IBackPath {
 export interface IMiddleware {
     Handle(path?: PathInfo): void | boolean;
 }
-export declare class RouterDirectiveHandler extends ExtendedDirectiveHandler {
-    constructor(router: RouterGlobalHandler);
-}
-export declare class RegisterDirectiveHandler extends ExtendedDirectiveHandler {
-    private router_;
-    constructor(router_: RouterGlobalHandler);
-}
-export declare class LinkDirectiveHandler extends ExtendedDirectiveHandler {
-    private router_;
-    constructor(router_: RouterGlobalHandler, modal?: IModalGlobalHandler);
-}
-export declare class NavDirectiveHandler extends ExtendedDirectiveHandler {
-    private router_;
-    private link_;
-    constructor(router_: RouterGlobalHandler);
-}
-export declare class BackDirectiveHandler extends ExtendedDirectiveHandler {
-    private router_;
-    constructor(router_: RouterGlobalHandler);
-}
 interface MountInfo {
     scopeId: string;
     type?: string;
@@ -48,11 +28,9 @@ interface MountInfo {
     proxy?: any;
     fetch?: (url: string, callback: (state?: boolean) => void) => void;
 }
-export declare class MountDirectiveHandler extends ExtendedDirectiveHandler {
-    private router_;
-    private info_;
+export declare class RouterDirectiveHandler extends ExtendedDirectiveHandler {
     private fetch_;
-    constructor(router_: RouterGlobalHandler, info_: MountInfo);
+    constructor(router: RouterGlobalHandler, mountInfo: MountInfo, modal?: IModalGlobalHandler);
 }
 export declare class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalHandler {
     private middlewares_;
@@ -71,7 +49,7 @@ export declare class RouterGlobalHandler extends GlobalHandler implements IRoute
     private currentUrl_;
     private currentQuery_;
     private currentTitle_;
-    constructor(middlewares_?: IMiddleware[], ajaxPrefix_?: string, mountElementType?: string);
+    constructor(middlewares_?: IMiddleware[], modal?: IModalGlobalHandler, ajaxPrefix_?: string, mountElementType?: string);
     Mount(): void;
     Register(page: PageOptions): number;
     Unregister(id: number): void;
