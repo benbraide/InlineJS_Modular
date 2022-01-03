@@ -249,7 +249,7 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                         ok: ok,
                         data: data,
                     });
-                    ExtendedDirectiveHandler.Evaluate(myRegion, element, directive.value);
+                    ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
                 }
                 catch{}
 

@@ -1,7 +1,6 @@
 import { IDirective, DirectiveHandlerReturn, IRegion, IResource } from '../../typedefs'
 import { Region } from '../../region'
 import { ExtendedDirectiveHandler } from '../extended/generic'
-import Quill from 'quill';
 
 interface QuillToolbarEntry{
     element: HTMLElement;
@@ -13,18 +12,21 @@ interface QuillToolbarEntry{
 
 export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
     private static fieldGroups_ = {
-        toggle: ['bold', 'italic', 'underline', 'strike', 'super', 'sub'],
+        toggle: ['bold', 'italic', 'underline', 'strike', 'blockquote', 'code'],
         size: ['size', 'small', 'normal', 'large', 'huge'],
+        header: ['header', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
         align: ['align', 'left', 'center', 'right'],
+        indent: ['indent', 'in', 'out'],
         list: ['list', 'bullet', 'ordered'],
-        link: ['link', 'link-prompt'],
-        image: ['image'],
+        script: ['script', 'sub', 'super'],
+        direction: ['direction', 'rtl'],
+        prompts: ['link', 'image', 'video', 'color', 'background', 'font', 'indent'],
         mounts: ['container'],
     };
     
     public constructor(resource?: IResource, urls?: Array<string> | string){
         super('quill', (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let elementScope = region.AddElement(element, true), locals = region.GetLocal(element, `\$${this.key_}`, true), mounts = {
+            let elementScope = region.AddElement(element, true), locals = region.GetLocal(element, `\$${this.key_}`, true, true), mounts = {
                 container: <HTMLElement>null,
             };
 
@@ -34,28 +36,20 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
                     return DirectiveHandlerReturn.Handled;
                 }
 
-                if (directive.arg.key === 'link-prompt'){
-                    let input = element.querySelector('input'), onEvent = (e: Event) => {
-                        e.preventDefault();
-                        quillInstance?.format('link', input.value);
-                        input.value = 'https://';
-                        element.dispatchEvent(new CustomEvent(`${this.key_}.link`));
-                    };
-
-                    if (input){
-                        input.value = 'https://';
-                        input.addEventListener('keydown', onEvent);
-                        element.querySelector('button')?.addEventListener('click', onEvent);
-                    }
+                if (groupKey === 'toggle'){
+                    locals.addToolbarItem(element, directive.arg.key, true, directive.arg.key);
+                }
+                else if (groupKey === 'prompts'){
+                    locals.addToolbarItem(element, (directive.arg.options.includes('prompt') ? `${directive.arg.key}.prompt` : directive.arg.key));
                 }
                 else if (directive.arg.key === 'container'){
-                    mounts.container = element;
-                }
-                else if (groupKey === 'toggle'){
-                    locals.addToolbarItem(element, directive.arg.key, true, directive.arg.key);
+                    locals.addToolbarItem(element, directive.arg.key);
                 }
                 else if (directive.arg.key === groupKey){
                     locals.addToolbarItem(element, groupKey);
+                }
+                else if (groupKey === 'indent'){
+                    locals.addToolbarItem(element, `${groupKey}.${directive.arg.key}`, ((directive.arg.key === 'out') ? '-1' : '+1'), groupKey);
                 }
                 else{//Standard
                     locals.addToolbarItem(element, `${groupKey}.${directive.arg.key}`, directive.arg.key, groupKey);
@@ -84,6 +78,46 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
                     return;
                 }
 
+                let bindPrompt = (action: string, defaultValue = '') => {
+                    let input = el.querySelector('input'), onEvent = (e: Event) => {
+                        e.preventDefault();
+
+                        quillInstance?.format(action, input.value);
+                        input.value = defaultValue;
+
+                        el.dispatchEvent(new CustomEvent(`${this.key_}.${action}`));
+                    };
+
+                    if (input){
+                        input.value = defaultValue;
+                        input.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter'){
+                                onEvent(e);
+                            }
+                        });
+                        el.querySelector('button')?.addEventListener('click', onEvent);
+                    }
+                };
+
+                let found = QuillDirectiveHandler.fieldGroups_.prompts.find((item) => {
+                    if (name !== `${item}.prompt`){
+                        return false;
+                    }
+
+                    bindPrompt(item, ((item === 'link') ? 'https://' : ''));
+
+                    return true;
+                });
+                
+                if (found){
+                    return;
+                }
+
+                if (name === 'container'){
+                    mounts.container = el;
+                    return;
+                }
+
                 let myElementScope = myRegion.AddElement(el, true);
                 if (!myElementScope){
                     return;
@@ -99,8 +133,7 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
 
                 let toolbarEntryProxy = ExtendedDirectiveHandler.CreateProxy((prop) => {
                     if (prop === 'parent'){
-                        let myRegion = Region.Get(regionId);
-                        return (myRegion ? myRegion.GetLocal(parent, `\$${this.key_}`, true) : null);
+                        return Region.Get(regionId)?.GetLocal(parent, `\$${this.key_}`, true, true);
                     }
 
                     if (prop === 'element'){
@@ -123,15 +156,20 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
                         Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${toolbarEntry.name}.${prop}`);
                         return toolbarEntry.active;
                     }
-                }, ['parent', 'element', 'name', 'action', 'match', 'active']);
+
+                    if (prop === 'addToolbarItem'){
+                        return Region.Get(regionId)?.GetLocal(parent, `\$${this.key_}`, true, true)?.addToolbarItem;
+                    }
+                }, ['parent', 'element', 'name', 'action', 'match', 'active', 'addToolbarItem']);
 
                 toolbar[name] = toolbarEntry;
                 toolbarProxy[name] = toolbarEntryProxy;
 
                 if (match){//Bind listener
                     el.addEventListener('click', () => {
-                        quillInstance.format(computedAction, (toolbarEntry.active ? false : toolbarEntry.match));
-                        toolbarEntry.active = !toolbarEntry.active;
+                        let isActive = toolbarEntry.active;
+                        quillInstance.format(computedAction, (isActive ? false : toolbarEntry.match));
+                        toolbarEntry.active = !isActive;
                         Region.Get(regionId).GetChanges().AddComposed('active', `${scopeId}.${name}`);
                     });
                 }
@@ -141,7 +179,7 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
                     delete toolbarProxy[name];
                 });
 
-                elementScope.locals[`\$${this.key_}`] = toolbarEntryProxy;
+                myElementScope.locals[`\$${this.key_}`] = toolbarEntryProxy;
             };
 
             let setActive = (name: string, value: boolean) => {
@@ -160,7 +198,8 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
                 Object.values(toolbar).forEach((entry) => {
                     let isActive: boolean, action = (entry.action || entry.name);
                     if (action in format){
-                        isActive = (entry.match === null || entry.match === undefined || entry.match === format[action]);
+                        let value = ((action === 'indent') ? '+1' : format[action]);
+                        isActive = (entry.match === null || entry.match === undefined || entry.match === value);
                     }
                     else{
                         isActive = false;
@@ -170,23 +209,19 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
                 });
             };
 
-            let readyCount = 0, quillInstance: Quill = null, init = () => {
-                if (readyCount >= 2 || ++readyCount < 2){
+            let ready = false, quillInstance: any = null, init = () => {
+                if (ready || !mounts.container){
                     return;
                 }
 
-                if (!mounts.container){
-                    --readyCount;
-                    return;
-                }
-
-                quillInstance = new Quill(mounts.container, {
+                quillInstance = new window['Quill'](mounts.container, {
                     modules: { toolbar: false },
                     theme: (options.snow ? 'snow' : 'default'),
                     readOnly: options.readonly,
                 });
 
                 quillInstance.on('editor-change', onEditorChange);
+                ready = true;
             };
 
             elementScope.locals[`\$${this.key_}`] = ExtendedDirectiveHandler.CreateProxy((prop) => {
@@ -225,12 +260,10 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
                 resource.GetMixed(urls, init, true);
             }
             else{//Resource not provided
-                ++readyCount;
+                elementScope.postProcessCallbacks.push(() => {
+                    init();
+                });
             }
-
-            region.AddPostProcessCallback(() => {
-                init();
-            });
 
             return DirectiveHandlerReturn.Handled;
         });
