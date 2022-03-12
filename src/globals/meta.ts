@@ -1,4 +1,4 @@
-import { SimpleGlobalHandler } from './generic'
+import { GlobalHandler, SimpleGlobalHandler } from './generic'
 import { Region } from '../region'
 
 export class NextTickGlobalHandler extends SimpleGlobalHandler{
@@ -68,24 +68,120 @@ export class RawGlobalHandler extends SimpleGlobalHandler{
 
 export class OrGlobalHandler extends SimpleGlobalHandler{
     public constructor(){
-        super('or', () => (...values: any[]) => {
-            let lastValue = undefined;
-            for (let value of values){
-                if (value){
-                    return value;
-                }
+        super('or', () => OrGlobalHandler.Compute);
+    }
 
-                lastValue = value;
-            }
-
-            return lastValue;
-        });
+    public static Compute(...values: any[]){
+        return (values.find(value => !!value) || values[values.length - 1]);
     }
 }
 
 export class AndGlobalHandler extends SimpleGlobalHandler{
     public constructor(){
-        super('and', () => (...values: boolean[]) => (values.findIndex(value => !value) == -1));
+        super('and', () => AndGlobalHandler.Compute);
+    }
+
+    public static Compute(...values: any[]){
+        let index = values.findIndex(value => !value);
+        return ((index == -1) ? values[values.length - 1] : values[index]);
+    }
+}
+
+export class ArithmeticGlobalHandler extends GlobalHandler{
+    public constructor(){
+        super('arithmetic', null, null, () => {
+            this.proxy_ = Region.CreateProxy((prop) => {
+                if (prop === 'neg' || prop === 'negative'){
+                    return (value: number) => -value;
+                }
+
+                if (prop === 'add' || prop === 'sum'){
+                    return (...values: number[]) => values.reduce((acc, value) => (acc + value));
+                }
+
+                if (prop === 'sub' || prop === 'subtract'){
+                    return (...values: number[]) => values.reduce((acc, value) => (acc - value));
+                }
+
+                if (prop === 'mult' || prop === 'multiply'){
+                    return (...values: number[]) => values.reduce((acc, value) => (acc * value));
+                }
+
+                if (prop === 'div' || prop === 'divide'){
+                    return (...values: number[]) => values.reduce((acc, value) => (acc / value));
+                }
+            }, ['neg', 'negative', 'add', 'sum', 'sub', 'subtract', 'mult', 'multiply', 'div', 'divide']);
+        }, () => {
+            this.proxy_ = null;
+        });
+    }
+}
+
+export class RelationalGlobalHandler extends GlobalHandler{
+    public constructor(){
+        super('relational', null, null, () => {
+            this.proxy_ = Region.CreateProxy((prop) => {
+                if (prop === 'compare'){
+                    return (first: number, second: number) => ((first < second) ? -1 : ((first == second) ? 0 : 1));
+                }
+
+                if (prop === 'less'){
+                    return (first: number, second: number) => (first < second);
+                }
+
+                if (prop === 'lessOrEqual' || prop === 'lessOrEquals'){
+                    return (first: number, second: number) => (first <= second);
+                }
+
+                if (prop === 'equal' || prop === 'equals'){
+                    return (first: number, second: number) => (first == second);
+                }
+
+                if (prop === 'explicitlyEqual' || prop === 'explicitlyEquals'){
+                    return (first: number, second: number) => (first === second);
+                }
+
+                if (prop === 'explicitlyNotEqual' || prop === 'explicitlyNotEquals'){
+                    return (first: number, second: number) => (first !== second);
+                }
+
+                if (prop === 'notEqual' || prop === 'notEquals'){
+                    return (first: number, second: number) => (first != second);
+                }
+
+                if (prop === 'greaterOrEqual' || prop === 'greaterOrEquals'){
+                    return (first: number, second: number) => (first >= second);
+                }
+
+                if (prop === 'greater'){
+                    return (first: number, second: number) => (first > second);
+                }
+            }, ['compare', 'less', 'lessOrEqual', 'lessOrEquals', 'equal', 'equals', 'explicitlyEqual', 'explicitlyEquals', 'explicitlyNotEqual', 'explicitlyNotEquals', 'notEqual', 'notEquals', 'greaterOrEqual', 'greaterOrEquals', 'greater']);
+        }, () => {
+            this.proxy_ = null;
+        });
+    }
+}
+
+export class LogicalGlobalHandler extends GlobalHandler{
+    public constructor(){
+        super('logical', null, null, () => {
+            this.proxy_ = Region.CreateProxy((prop) => {
+                if (prop === 'not'){
+                    return (value: boolean) => !value;
+                }
+
+                if (prop === 'or'){
+                    return OrGlobalHandler.Compute;
+                }
+
+                if (prop === 'and'){
+                    return AndGlobalHandler.Compute;
+                }
+            }, ['not', 'or', 'and']);
+        }, () => {
+            this.proxy_ = null;
+        });
     }
 }
 

@@ -86,8 +86,13 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                         return false;
                     }
 
+                    let myRegion = Region.Get(regionId);
+                    if (!myRegion){
+                        return;
+                    }
+
                     state[key] = value;
-                    Region.Get(regionId).GetChanges().AddComposed(key, scopeId);
+                    myRegion.GetChanges().AddComposed(key, scopeId);
 
                     target.dispatchEvent(new CustomEvent(`${this.key_}.${key}`, { detail: value }));
                     target.dispatchEvent(new CustomEvent(`${this.key_}.change`, {
@@ -98,21 +103,10 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                     }));
 
                     if (!targetInfo){//Root
-                        let myRegion = Region.Get(regionId);
-                        if (!myRegion){
-                            return;
-                        }
-                        
-                        try{
-                            myRegion.GetState().PushContext('changed', {
-                                type: key,
-                                value: value,
-                            });
-                            ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
-                        }
-                        catch{}
-
-                        myRegion.GetState().PopContext('changed');
+                        ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value, 'changed', {
+                            type: key,
+                            value: value,
+                        });
                     }
 
                     return true;

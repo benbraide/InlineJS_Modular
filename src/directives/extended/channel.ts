@@ -64,24 +64,15 @@ export class ChannelDirectiveHandler extends ExtendedDirectiveHandler{
             let regionId = region.GetId();
             if (options.listen){//Listen for default event
                 let handler = (e: any) => {
-                    element.dispatchEvent(new CustomEvent(`${this.key_}.${channelName}`, {
-                        detail: {
-                            data: e.data,
-                        },
-                    }));
-    
-                    let myRegion = Region.Get(regionId);
-                    if (!myRegion){
-                        return;
-                    }
-                    
                     try{
-                        myRegion.GetState().PushContext('event', e);
-                        ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
-                    }
-                    catch{}
+                        element.dispatchEvent(new CustomEvent(`${this.key_}.${channelName}`, {
+                            detail: {
+                                data: e.data,
+                            },
+                        }));
+                    } catch{}
 
-                    myRegion.GetState().PopContext('event');
+                    ExtendedDirectiveHandler.BlockEvaluate(Region.Get(regionId), element, directive.value, 'event', e);
                 };
                 
                 if (channel.isNotification){

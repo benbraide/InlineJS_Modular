@@ -32,11 +32,11 @@
         <h2 x-style:color="color" x-on:click="color = 'red'">First Component</h2>
         <div>
             <span>Name: </span>
-            <strong x-text="name"></strong>
+            <strong x-text="name" x-text:prefix="'[Prefix] '" x-text:suffix="' [Suffix]'"></strong>
         </div>
         <div>
             <span>Name (by getName): </span>
-            <strong x-text="getName"></strong>
+            <strong x-text="getName()"></strong>
         </div>
         <div>
             <span>Name (by $component): </span>
@@ -144,11 +144,11 @@
             </template>
         </ul>
     </div>
-    <div x-component="animate" x-data="{ show: false, showSide: false, animating: false, count: 999 }">
+    <div x-component="animate" x-data="{ show: false, showSide: false, animating: false, count: 999, calls: 0 }">
         <h2 x-style:color="color" x-on:click="color = 'red'">Animate Component</h2>
-        <label style="display: inline-block;" x-animate.spin-top-left.45.slow="showSide"><input type="checkbox" x-model.out="show"> Toggle form</label>
+        <label style="display: inline-block;" x-animate.spin-top-left.45.slow="showSide"><input type="checkbox" x-model="show"> Toggle form</label>
         <label style="display: inline-block;" x-animate.pulse.sine-in-out.slower="showSide"><input type="checkbox" x-model.oneway="showSide"> Toggle Side</label>
-        <button type="button" style="position: relative;" x-on:click="count += 100">
+        <button type="button" style="position: relative;" x-on:click="count += 100; show = !show">
             Do Something
             <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background-color: rgba(0, 0, 0, 0.36); cursor: wait;"
                 x-cloak="hide" x-show:animate.zoom.ease.faster="showSide" x-animate:inner.infinite.overlap.zoom.150="showSide">
@@ -192,7 +192,8 @@
                     </div>
                 </div>
             </div>
-            <span x-text:animate.7s.lazy="{ show: show, showSide: showSide, animating: animating, count: count }"></span>
+            <p x-text:animate.5s.lazy="$static(++calls) && { show: show, showSide: showSide, animating: animating, count: count }"></p>
+            <p x-text="calls" x-text:prefix="'Text run calls made: '"></p>
         </div>
 
         <div style="height: 100vh; width: 500px; background-color: gray; position: fixed; right: 0; top: 0;" x-cloak="hide" x-animate.zoom-out.200.faster="showSide"></div>
@@ -267,7 +268,7 @@
         <h2>Counter</h2>
         <p x-counter.duration.9s x-text="`Steps (${$counter.running ? 'running' : 'stopped'}): ${$counter.steps}`"></p>
     </div>
-    <script src="/dist/inlinejs-extended.js"></script>
+    <script src="dist/inlinejs-extended.js"></script>
     <script>
         function typewriterList(){
             return [

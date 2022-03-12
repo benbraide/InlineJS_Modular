@@ -74,19 +74,7 @@ export class OnDirectiveHandler extends DirectiveHandler{
 
             let regionId = region.GetId();
             let doEvaluation = (myRegion: IRegion, e: Event) => {
-                let state = myRegion?.GetState();
-                try{
-                    if (state){
-                        state.PushContext(state.EventContextKey(), e);
-                    }
-
-                    DirectiveHandler.BlockEvaluate(myRegion, element, directive.value, false, e);
-                }
-                finally{
-                    if (state){
-                        state.PopContext(state.EventContextKey());
-                    }
-                }
+                DirectiveHandler.BlockEvaluate(myRegion, element, directive.value, myRegion?.GetState()?.EventContextKey(), e);
             };
 
             let onEvent = (e: Event) => {
@@ -114,6 +102,11 @@ export class OnDirectiveHandler extends DirectiveHandler{
                 }
                 
                 let myRegion = Region.Get(regionId);
+                if (!myRegion){
+                    (options.window ? window : element).removeEventListener(e.type, onEvent);
+                    return;
+                }
+                
                 if (options.once && options.outside){
                     myRegion.GetOutsideEventManager().RemoveListener(element, e.type, onEvent);
                 }
@@ -149,30 +142,22 @@ export class OnDirectiveHandler extends DirectiveHandler{
                 mappedEvent = mobileMap[event];
             }
 
-            if (!options.outside){
-                if (options.window || options.document){
-                    let target = (options.window ? window : document);
-                    
-                    target.addEventListener(event, onEvent);
-                    if (mappedEvent){
-                        target.addEventListener(mappedEvent, onEvent);
-                    }
-                    
-                    region.AddElement(element).uninitCallbacks.push(() => {
-                        target.removeEventListener(event, onEvent);
-                        if (mappedEvent){
-                            target.removeEventListener(mappedEvent, onEvent);
-                        }
-                    });
+            let getTarget = () => {
+                if (options.window){
+                    return window;
                 }
-                else{
-                    element.addEventListener(event, onEvent);
-                    if (mappedEvent){
-                        element.addEventListener(mappedEvent, onEvent);
-                    }
+
+                return (options.document ? document : element);
+            };
+
+            let unbindEvent = (target: (Window & typeof globalThis) | Document | HTMLElement) => {
+                target.removeEventListener(event, onEvent);
+                if (mappedEvent){
+                    target.removeEventListener(mappedEvent, onEvent);
                 }
             }
-            else{//Outside
+
+            if (options.outside && !options.window && !options.document){
                 region.GetOutsideEventManager().AddListener(element, event, onEvent);
                 if (mappedEvent){
                     region.GetOutsideEventManager().AddListener(element, mappedEvent, onEvent);
@@ -197,6 +182,18 @@ export class OnDirectiveHandler extends DirectiveHandler{
                         innerRegion.GetOutsideEventManager().AddExcept(innerElement, DirectiveHandler.Evaluate(innerRegion, innerElement, innerDirective.value), onEvent);
                         return DirectiveHandlerReturn.Handled;
                     }, false));
+                }
+            }
+            else{//Event on target
+                let target = getTarget();
+
+                target.addEventListener(event, onEvent);
+                if (mappedEvent){
+                    target.addEventListener(mappedEvent, onEvent);
+                }
+
+                if (target !== element){//Unbind on destruction
+                    region.AddElement(element).uninitCallbacks.push(() => unbindEvent(target));
                 }
             }
 

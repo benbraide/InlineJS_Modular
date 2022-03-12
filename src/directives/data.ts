@@ -17,7 +17,7 @@ export class DataDirectiveHandler extends DirectiveHandler{
                 data = ({} as DataOptions);
             }
             else{
-                data = (DirectiveHandler.Evaluate(region, element, directive.value, true) as DataOptions);
+                data = (DirectiveHandler.Evaluate(region, element, directive.value, null, null, true) as DataOptions);
             }
             
             if (!Region.IsObject(data)){

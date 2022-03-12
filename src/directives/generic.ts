@@ -51,23 +51,23 @@ export class DirectiveHandler implements IDirectiveHandler{
         return Region.CreateProxy(getter, contains, setter, target);
     }
 
-    public static Evaluate(region: IRegion, element: HTMLElement, expression: string, useWindow = false, ...args: any): any{
-        return DirectiveHandler.DoEvaluation(region, element, expression, useWindow, true, false, ...args);
+    public static Evaluate(region: IRegion, element: HTMLElement, expression: string, ctxName?: string, ctx?: any, useWindow = false): any{
+        return DirectiveHandler.DoEvaluation(region, element, expression, true, false, ctxName, ctx, useWindow);
     }
 
-    public static EvaluateAlways(region: IRegion, element: HTMLElement, expression: string, useWindow = false, ...args: any): any{
-        return DirectiveHandler.DoEvaluation(region, element, expression, useWindow, false, false, ...args);
+    public static EvaluateAlways(region: IRegion, element: HTMLElement, expression: string, ctxName?: string, ctx?: any, useWindow = false): any{
+        return DirectiveHandler.DoEvaluation(region, element, expression, false, false, ctxName, ctx, useWindow);
     }
     
-    public static BlockEvaluate(region: IRegion, element: HTMLElement, expression: string, useWindow = false, ...args: any): any{
-        return DirectiveHandler.DoEvaluation(region, element, expression, useWindow, true, true, ...args);
+    public static BlockEvaluate(region: IRegion, element: HTMLElement, expression: string, ctxName?: string, ctx?: any, useWindow = false): any{
+        return DirectiveHandler.DoEvaluation(region, element, expression, true, true, ctxName, ctx, useWindow);
     }
 
-    public static BlockEvaluateAlways(region: IRegion, element: HTMLElement, expression: string, useWindow = false, ...args: any): any{
-        return DirectiveHandler.DoEvaluation(region, element, expression, useWindow, false, true, ...args);
+    public static BlockEvaluateAlways(region: IRegion, element: HTMLElement, expression: string, ctxName?: string, ctx?: any, useWindow = false): any{
+        return DirectiveHandler.DoEvaluation(region, element, expression, false, true, ctxName, ctx, useWindow);
     }
     
-    public static DoEvaluation(region: IRegion, element: HTMLElement, expression: string, useWindow: boolean, ignoreRemoved: boolean, useBlock: boolean, ...args: any): any{
+    public static DoEvaluation(region: IRegion, element: HTMLElement, expression: string, ignoreRemoved: boolean, useBlock: boolean, ctxName?: string, ctx?: any, useWindow = false): any{
         if (!region){
             return null;
         }
@@ -78,18 +78,21 @@ export class DirectiveHandler implements IDirectiveHandler{
         evaluator.GetScopeRegionIds().Push(region.GetId());
         state.PushContext(state.ElementContextKey(), element);
 
+        if (ctxName){//Push provided context
+            state.PushContext(ctxName, ctx);
+        }
+
         try{
             result = evaluator.Evaluate(region.GetId(), element, expression, useWindow, ignoreRemoved, useBlock);
-            if (typeof result === 'function'){
-                result = region.Call(result as (...values: any) => any, ...args);
-            }
-
             result = ((result instanceof Value) ? result.Get() : result);
         }
         catch (err){
             state.ReportError(err, `InlineJs.Region<${region.GetId()}>.CoreDirectiveHandlers.Evaluate(${expression})`);
         }
         finally{
+            if (ctxName){//Pop provided context
+                state.PopContext(ctxName);
+            }
             state.PopContext(state.ElementContextKey());
             evaluator.GetScopeRegionIds().Pop();
         }

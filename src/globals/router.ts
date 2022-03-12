@@ -231,8 +231,14 @@ export class RouterDirectiveHandler extends ExtendedDirectiveHandler{
                     return region.ForwardEventBinding(element, directive.value, [...directive.arg.options, 'window'], `${this.key_}.mount.error`);
                 }
 
-                mountInfo.element = document.createElement(mountInfo.type || 'div');
-                element.parentElement.insertBefore(mountInfo.element, element);
+                let nextSibling = element.nextElementSibling;
+                if (!nextSibling || nextSibling.getAttribute('data-router') !== 'mount'){
+                    mountInfo.element = document.createElement(mountInfo.type || 'div');
+                    element.parentElement.insertBefore(mountInfo.element, element);
+                }
+                else{
+                    mountInfo.element = (nextSibling as HTMLElement);
+                }
 
                 let lastCallback: (state?: boolean) => void = null;
                 mountInfo.fetch = (url, callback) => {
@@ -422,8 +428,20 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
         this.ajaxPrefix_ = this.ProcessUrl(this.ajaxPrefix_);
     }
 
-    public Mount(){
-        this.Load_(this.BuildPath(this.url_));
+    public Mount(load = true){
+        let path = this.BuildPath(this.url_);
+        if (!load){
+            let page = this.FindPage_(path), processedPath: PathInfo = {
+                base: this.ProcessUrl(path.base),
+                query: this.ProcessQuery(path.query),
+            };
+            
+            this.activePage_ = page;
+            this.currentUrl_ = this.BuildUrl(processedPath, true, false);
+        }
+        else{
+            this.Load_(path);
+        }
     }
 
     public Register(page: PageOptions): number{
@@ -493,13 +511,13 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
             return '';
         }
 
-        url = url.replace(/\/+$/, '');//Truncate '/'
+        url = url.replace(/[?]{2,}/g, '?').replace(/[&]{2,}/g, '&').replace(/\/+$/, '');//Truncate '/'
         if (url === this.origin_){//Root
             return (includeAjaxPrefix ? (this.ajaxPrefix_ || '/') : '/');
         }
         
         if (url.startsWith(`${this.origin_}/`)){//Skip origin
-            url = url.substr(this.origin_.length);
+            url = url.substring(this.origin_.length);
         }
         
         if (/^[a-zA-Z0-9_]+:\/\//.test(url)){
@@ -525,9 +543,7 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
     public BuildUrl(path: PathInfo, absolute = true, process = true, includeAjaxPrefix = false){
         let base = (process ? this.ProcessUrl(path.base, includeAjaxPrefix) : path.base), query = (process ? this.ProcessQuery(path.query) : path.query), url: string;
         if (query){
-            if (query.startsWith('?') || query.startsWith('&')){
-                query = query.substr(1);
-            }
+            query = query.replace(/^[?&]+/g, '').replace(/[?]+/g, '').replace(/[&]{2,}/g, '&');
             url = (base.includes('?') ? `${base}&${query}` : `${base}?${query}`);
         }
         else{
@@ -542,8 +558,8 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
 
         let queryIndex = url.indexOf('?');
         return {
-            base: ((queryIndex == -1) ? url : url.substr(0, queryIndex)),
-            query: ((queryIndex == -1) ? '' : url.substr(queryIndex + 1)),
+            base: ((queryIndex == -1) ? url : url.substring(0, queryIndex)),
+            query: ((queryIndex == -1) ? '' : url.substring(queryIndex + 1)),
         };
     }
 

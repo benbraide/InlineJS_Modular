@@ -170,10 +170,17 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 save = null;
             }
 
-            let active = false, errors = {}, middlewareData: Record<string, IFormMiddlewareDataInfo> = {}, setActiveState = (state: boolean) => {
+            let active = false, submitted = false, errors = {}, middlewareData: Record<string, IFormMiddlewareDataInfo> = {}, setActiveState = (state: boolean) => {
                 if (active != state){
                     active = state;
                     Region.Get(regionId).GetChanges().AddComposed('active', scopeId);
+                }
+            };
+
+            let setSubmittedState = (state: boolean) => {
+                if (submitted != state){
+                    submitted = state;
+                    Region.Get(regionId).GetChanges().AddComposed('submitted', scopeId);
                 }
             };
 
@@ -194,6 +201,11 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 if (prop === 'active'){
                     Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
                     return active;
+                }
+
+                if (prop === 'submitted'){
+                    Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
+                    return submitted;
                 }
 
                 if (prop === 'errors'){
@@ -236,24 +248,18 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                         }
                     };
                 }
-            }, ['active', 'errors', 'element', 'submit', 'bindMiddlewareData', 'unbindMiddlewareData']);
+            }, ['active', 'submitted', 'errors', 'element', 'submit', 'bindMiddlewareData', 'unbindMiddlewareData']);
 
             let noContent = (directive.value === Region.GetConfig().GetDirectiveName(this.key_));
             let evaluate = (myRegion: IRegion, ok: boolean, data: any) => {
                 if (noContent){
                     return;
                 }
-                
-                try{
-                    myRegion.GetState().PushContext('response', {
-                        ok: ok,
-                        data: data,
-                    });
-                    ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
-                }
-                catch{}
 
-                myRegion.GetState().PopContext('response');
+                ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value, 'response', {
+                    ok: ok,
+                    data: data,
+                });
             };
 
             let afterHandledEvent = (myRegion: IRegion, ok: boolean, data: any) => {
@@ -283,14 +289,20 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                     return;
                 }
                 
+                let event = new CustomEvent(`${this.key_}.submitting`);
+                element.dispatchEvent(event);
+                if (event.defaultPrevented){
+                    return;
+                }
+                
                 let info: RequestInit = {
                     method: getMethod(),
                     credentials: 'same-origin',
                 };
 
                 setActiveState(true);
-                element.dispatchEvent(new CustomEvent('form.submitting'));
-                
+                setSubmittedState(true);
+
                 fetch(buildUrl(info), info).then(Fetch.HandleJsonResponse).then((response) => {
                     setActiveState(false);
                     
@@ -300,11 +312,11 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                     errors = {};
                     myRegion.GetChanges().AddComposed('errors', scopeId);
 
-                    element.dispatchEvent(new CustomEvent('form.submit', {
+                    element.dispatchEvent(new CustomEvent(`${this.key_}.submitting`, {
                         detail: { response: response },
                     }));
                     
-                    if (!Region.IsObject(response)){
+                    if (!response || !Region.IsObject(response)){
                         afterHandledEvent(myRegion, true, response);
 
                         if (options.persistent && save){

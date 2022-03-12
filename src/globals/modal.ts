@@ -69,7 +69,9 @@ export class ModalGlobalHandler extends GlobalHandler implements IModalGlobalHan
         this.state_.container.style.zIndex = (this.overlay_ ? (this.overlay_.GetZIndex() + 2) : zIndex).toString();
         this.state_.container.style.pointerEvents = 'none';
         
+        this.state_.mount.style.width = 'auto';
         this.state_.mount.style.pointerEvents = 'auto';
+
         this.state_.onClick = (bubbled) => {
             if (!bubbled){
                 this.SetVisibility(false);

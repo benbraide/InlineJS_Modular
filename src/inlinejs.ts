@@ -20,6 +20,9 @@ import {
     RawGlobalHandler,
     OrGlobalHandler,
     AndGlobalHandler,
+    ArithmeticGlobalHandler,
+    RelationalGlobalHandler,
+    LogicalGlobalHandler,
     ConditionalGlobalHandler,
     EvaluateGlobalHandler,
     CallTempGlobalHandler
@@ -66,6 +69,9 @@ Region.GetGlobalManager().AddHandler(new StaticGlobalHandler());
 Region.GetGlobalManager().AddHandler(new RawGlobalHandler());
 Region.GetGlobalManager().AddHandler(new OrGlobalHandler());
 Region.GetGlobalManager().AddHandler(new AndGlobalHandler());
+Region.GetGlobalManager().AddHandler(new ArithmeticGlobalHandler());
+Region.GetGlobalManager().AddHandler(new RelationalGlobalHandler());
+Region.GetGlobalManager().AddHandler(new LogicalGlobalHandler());
 Region.GetGlobalManager().AddHandler(new ConditionalGlobalHandler());
 Region.GetGlobalManager().AddHandler(new EvaluateGlobalHandler());
 Region.GetGlobalManager().AddHandler(new CallTempGlobalHandler());

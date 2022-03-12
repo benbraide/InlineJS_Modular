@@ -42,30 +42,24 @@ export class CounterDirectiveHandler extends ExtendedDirectiveHandler{
                 if (checkpoint != state.checkpoint){
                     return;
                 }
-                
+
                 let myRegion = Region.Get(regionId);
                 if (!myRegion){
                     return;
                 }
-                
-                try{
-                    myRegion.GetState().PushContext('counter', {
-                        steps: state.steps,
-                    });
-                    ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
-                }
-                catch{}
 
-                myRegion.GetState().PopContext('counter');
+                ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value, 'counter', {
+                    steps: state.steps,
+                });
+
                 ++state.steps;
-                
                 if (canRun()){
-                    Region.Get(regionId).GetChanges().AddComposed('steps', scopeId);
+                    myRegion.GetChanges().AddComposed('steps', scopeId);
                     setTimeout(step, options.delay, checkpoint);
                 }
                 else{//Stopped
                     state.running = false;
-                    Region.Get(regionId).GetChanges().AddComposed('running', scopeId);
+                    myRegion.GetChanges().AddComposed('running', scopeId);
                 }
             };
 

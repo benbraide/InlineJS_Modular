@@ -33,7 +33,8 @@ export class PostDirectiveHandler extends DirectiveHandler{
             let regionId = region.GetId(), isNextTick = directive.arg.options.includes('nexttick');
             region.AddElement(element, true).postProcessCallbacks.push(() => {
                 if (isNextTick){
-                    Region.Get(regionId).AddNextTickCallback(() => DirectiveHandler.BlockEvaluate(Region.Get(regionId), element, directive.value));
+                    let myRegion = Region.Get(regionId);
+                    myRegion.AddNextTickCallback(() => DirectiveHandler.BlockEvaluate(myRegion, element, directive.value));
                 }
                 else{
                     DirectiveHandler.BlockEvaluate(Region.Get(regionId), element, directive.value);
@@ -47,8 +48,20 @@ export class PostDirectiveHandler extends DirectiveHandler{
 export class BindDirectiveHandler extends DirectiveHandler{
     public constructor(){
         super('bind', (region: IRegion, element: HTMLElement, directive: IDirective) => {
+            let regionId = region.GetId(), isNextTick = directive.arg.options.includes('nexttick'), isQueued = false;
             region.GetState().TrapGetAccess(() => {
-                DirectiveHandler.BlockEvaluate(region, element, directive.value);
+                if (!isNextTick){
+                    DirectiveHandler.BlockEvaluate(Region.Get(regionId), element, directive.value);
+                }
+                else if (!isQueued){
+                    isQueued = true;
+
+                    let myRegion = Region.Get(regionId);
+                    myRegion.AddNextTickCallback(() => {
+                        isQueued = false;
+                        DirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
+                    });
+                }
                 return true;
             }, true, element);
             return DirectiveHandlerReturn.Handled;

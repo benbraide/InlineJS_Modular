@@ -4,18 +4,93 @@ import { DirectiveHandler } from './generic'
 import { IntersectionObserver } from '../observers/intersection';
 
 export class TextHelper{
-    public static Bind(region: IRegion, element: HTMLElement, directive: IDirective, isHtml: boolean, callback?: () => boolean, allowAnimation?: boolean){
-        let onChange: (value: any) => void, regionId = region.GetId(), options = {
+    public static Bind(key: string, region: IRegion, element: HTMLElement, directive: IDirective, isHtml: boolean, callback?: () => boolean, allowAnimation?: boolean){
+        let elementScope = region.AddElement(element, true), regionId = region.GetId();
+        if (!elementScope){
+            return;
+        }
+
+        let bindKey = (callKey: string) => {
+            if (`#${key}` in elementScope.locals){
+                region.GetState().TrapGetAccess(() => {
+                    (elementScope.locals[`#${key}`])[callKey](DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value));
+                }, true, element);
+            }
+        };
+        
+        if (directive.arg.key === 'prefix'){
+            bindKey('setPrefix');
+            return;
+        }
+        
+        if (directive.arg.key === 'suffix'){
+            bindKey('setSuffix');
+            return;
+        }
+        
+        let onChange: (value: any) => void, options = {
             ancestor: -1,
+            nexttick: false,
             lazy: false,
             comma: false,
             float: false,
+            dollar: false,
+            cent: false,
+            pound: false,
+            euro: false,
+            yen: false,
+            naira: false,
+            kobo: false,
             fixed: false,
             fixedPoint: 0,
+            prefix: '',
+            suffix: '',
+        };
+
+        let getTextPrefix = () => {
+            let prefix = '';
+            if (options.dollar){
+                prefix += '$';
+            }
+
+            if (options.pound){
+                prefix += '£';
+            }
+
+            if (options.euro){
+                prefix += '€';
+            }
+
+            if (options.yen){
+                prefix += '¥';
+            }
+
+            if (options.naira){
+                prefix += '₦';
+            }
+
+            return (prefix + (options.prefix || ''));
+        };
+
+        let getTextSuffix = () => {
+            let suffix = '';
+            if (options.cent){
+                suffix += '¢';
+            }
+
+            if (options.kobo){
+                suffix += 'k';
+            }
+            
+            return (suffix + (options.suffix || ''));
+        };
+
+        let getTextValue = (value: any) => {
+            return (getTextPrefix() + DirectiveHandler.ToString(value) + getTextSuffix());
         };
 
         if (isHtml){
-            onChange = (value: any) => Region.InsertHtml(element, DirectiveHandler.ToString(value));
+            onChange = (value: any) => Region.InsertHtml(element, getTextValue(value));
         }
         else if (element instanceof HTMLInputElement){
             if (element.type === 'checkbox' || element.type === 'radio'){
@@ -36,7 +111,7 @@ export class TextHelper{
             }
             else{//Input with value
                 onChange = (value: any) => {
-                    element.value = DirectiveHandler.ToString(value);
+                    element.value = getTextValue(value);
                 };
             }
         }
@@ -48,15 +123,15 @@ export class TextHelper{
                     });
                 }
                 else{//Single selection
-                    element.value = DirectiveHandler.ToString(value);
+                    element.value = getTextValue(value);
                 }
             };
         }
         else if (element instanceof HTMLTextAreaElement){
-            onChange = (value: any) => element.value = DirectiveHandler.ToString(value);
+            onChange = (value: any) => element.value = getTextValue(value);
         }
         else{//Unknown
-            onChange = (value: any) => element.textContent = DirectiveHandler.ToString(value);
+            onChange = (value: any) => element.textContent = getTextValue(value);
         }
 
         directive.arg.options.forEach((option, index) => {
@@ -129,7 +204,7 @@ export class TextHelper{
             return value;
         };
 
-        let lastValue = null, step = (value: any, fraction: number) => {
+        let lastValue = null, checkpoint = 0, queued = false, step = (value: any, fraction: number) => {
             lastValue = stepValue(value, lastValue, fraction);
             if (typeof lastValue === 'number' && ((options.float && options.fixed) || options.comma)){
                 let computed = ((options.float && options.fixed) ? (Math.round(lastValue * 100) / 100).toFixed(options.fixedPoint) : lastValue.toString());
@@ -155,7 +230,65 @@ export class TextHelper{
             }
         };
 
-        let animator = region.ParseAnimation(directive.arg.options, element, (allowAnimation && directive.arg.key === 'animate')), active = false;
+        let doRun = () => {
+            queued = false;
+            let checked = ++checkpoint, value = DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value);
+            animator.Run(true, (fraction) => {
+                if (checked == checkpoint){
+                    step(value, fraction);
+                }
+            });
+        };
+        
+        let animator = region.ParseAnimation(directive.arg.options, element, (allowAnimation && directive.arg.key === 'animate')), run = (isFirst = false) => {
+            let myRegion = Region.Get(regionId);
+            if (!isFirst && options.nexttick && myRegion){
+                if (!queued){
+                    queued = true;
+                    myRegion.AddNextTickCallback(doRun);
+                }
+            }
+            else{
+                doRun();
+            }
+        };
+
+        let isBound = false, bind = () => {
+            if (isBound){
+                return;
+            }
+
+            isBound = true;
+            region.GetState().TrapGetAccess(() => run(true), () => {
+                if (!callback || callback()){
+                    run();
+                }
+            }, element);
+        };
+
+        let setOption = (key: string, value: any) => {
+            if (options[key] === value){
+                return;
+            }
+            
+            options[key] = value;
+            if (isBound && (!callback || callback())){
+                run();
+            }
+        };
+
+        elementScope.locals[`#${key}`] = Region.CreateProxy((prop) => {
+            if (prop === 'setPrefix'){
+                return (value: string) => setOption('prefix', value);
+            }
+
+            if (prop === 'setSuffix'){
+                return (value: string) => setOption('suffix', value);
+            }
+
+            return true;
+        }, ['setPrefix', 'setSuffix']);
+
         if (options.lazy && !callback){
             let intersectionOptions = {
                 root: ((options.ancestor == -1) ? null : region.GetElementAncestor(element, options.ancestor)),
@@ -171,26 +304,19 @@ export class TextHelper{
                     myRegion.GetIntersectionObserverManager().RemoveByKey(key);
                 }
                 
-                active = true;
-                animator.Run(true, fraction => step(DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value), fraction));
+                bind();
             });
         }
         else{//Immediate
-            active = true;
+            bind();
         }
-
-        region.GetState().TrapGetAccess(() => {
-            if (active && (!callback || callback())){
-                animator.Run(true, fraction => step(DirectiveHandler.Evaluate(Region.Get(regionId), element, directive.value), fraction));
-            }
-        }, true, element);
     }
 }
 
 export class TextDirectiveHandler extends DirectiveHandler{
     public constructor(){
         super('text', (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            TextHelper.Bind(region, element, directive, false, null, true);
+            TextHelper.Bind(this.key_, region, element, directive, false, null, true);
             return DirectiveHandlerReturn.Handled;
         }, false);
     }
@@ -199,7 +325,7 @@ export class TextDirectiveHandler extends DirectiveHandler{
 export class HtmlDirectiveHandler extends DirectiveHandler{
     public constructor(){
         super('html', (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            TextHelper.Bind(region, element, directive, true);
+            TextHelper.Bind(this.key_, region, element, directive, true);
             return DirectiveHandlerReturn.Handled;
         }, false);
     }

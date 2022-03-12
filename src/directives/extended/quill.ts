@@ -26,6 +26,11 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
     
     public constructor(resource?: IResource, urls?: Array<string> | string){
         super('quill', (region: IRegion, element: HTMLElement, directive: IDirective) => {
+            let response = ExtendedDirectiveHandler.CheckEvents(this.key_, region, element, directive, 'ready', []);
+            if (response != DirectiveHandlerReturn.Nil){
+                return response;
+            }
+            
             let elementScope = region.AddElement(element, true), locals = region.GetLocal(element, `\$${this.key_}`, true, true), mounts = {
                 container: <HTMLElement>null,
             };
@@ -222,6 +227,8 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
 
                 quillInstance.on('editor-change', onEditorChange);
                 ready = true;
+
+                element.dispatchEvent(new CustomEvent(`${this.key_}.ready`));
             };
 
             elementScope.locals[`\$${this.key_}`] = ExtendedDirectiveHandler.CreateProxy((prop) => {

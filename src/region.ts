@@ -529,6 +529,8 @@ export class Region implements IRegion{
 
             if (!preserve && !scope.preserve){
                 Region.directiveManager_.Expunge(scope.element);
+                Region.outsideEventManager_.Unbind(scope.element);
+                
                 if (this.intersectionObserverManager_){
                     this.intersectionObserverManager_.RemoveAll(scope.element);
                 }

@@ -20,18 +20,7 @@ export class ChangeDirectiveHandler extends ExtendedDirectiveHandler{
             }
 
             let regionId = region.GetId(), elementScope = region.AddElement(element, true), evaluate = (data: Record<string, any>) => {
-                let myRegion = Region.Get(regionId);
-                if (!myRegion){
-                    return;
-                }
-                
-                try{
-                    myRegion.GetState().PushContext('changed', data);
-                    ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
-                }
-                catch{}
-
-                myRegion.GetState().PopContext('changed');
+                ExtendedDirectiveHandler.BlockEvaluate(Region.Get(regionId), element, directive.value, 'changed', data);
             };
 
             if (properties.attribute){
