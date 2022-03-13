@@ -18,14 +18,8 @@ export class ResourceDirectiveHandler extends ExtendedDirectiveHandler{
             if (!info){
                 return DirectiveHandlerReturn.Handled;
             }
-
-            let scope = region.GetElementScope(info.template);
-            if (!scope){
-                region.GetState().ReportError(`Failed to bind '${Region.GetConfig().GetDirectiveName(this.key_)}' to element`);
-                return DirectiveHandlerReturn.Handled;
-            }
-
-            let options = {
+            
+            let options = ExtendedDirectiveHandler.GetOptions({
                 style: false,
                 script: false,
                 mixed: false,
@@ -33,15 +27,9 @@ export class ResourceDirectiveHandler extends ExtendedDirectiveHandler{
                 json: false,
                 text: false,
                 concurrent: false,
-            };
+            }, directive.arg.options);
 
-            directive.arg.options.forEach((option) => {
-                if (option in options){
-                    options[option] = true;
-                }
-            });
-
-            let ifConditionChange: Array<(isTrue: boolean) => void>, listen = () => {
+            let listen = (alertChange: (value: boolean) => void) => {
                 let myRegion = Region.Get(info.regionId);
                 if (!myRegion){
                     return;
@@ -53,21 +41,8 @@ export class ResourceDirectiveHandler extends ExtendedDirectiveHandler{
                         return;
                     }
                     
-                    ifConditionChange.forEach((callback) => {
-                        try{
-                            callback(true);
-                        }
-                        catch{}
-                    });
-
-                    itemInfo = ControlHelper.InsertItem(myRegion, info, (myItemInfo) => {
-                        let scope = myRegion.GetElementScope(info.template), cloneScope = myRegion.GetElementScope(myItemInfo.clone);
-                        Object.entries(scope.locals).forEach(([key, item]) => {//Forward locals
-                            cloneScope.locals[key] = item;
-                        });
-
-                        cloneScope.locals['data'] = data;
-                    });
+                    alertChange(true);
+                    itemInfo = info.insertItem(myRegion, (scope) => (scope.locals['data'] = data));
                 };
 
                 if (options.style){
@@ -84,13 +59,8 @@ export class ResourceDirectiveHandler extends ExtendedDirectiveHandler{
                 }
             };
 
-            if (scope.ifConditionChange && scope.ifConditionChange.length > 0){
-                ifConditionChange = scope.ifConditionChange;
-                listen();
-            }
-            else{//Initialize if condition change list
-                ifConditionChange = (scope.ifConditionChange = new Array<(isTrue: boolean) => void>());
-                scope.postProcessCallbacks.push(listen);
+            if (!ControlHelper.GetConditionChange(region.GetElementScope(info.template), listen)){
+                region.GetState().ReportError(`Failed to bind '${Region.GetConfig().GetDirectiveName(this.key_)}' to element`);
             }
             
             return DirectiveHandlerReturn.Handled;

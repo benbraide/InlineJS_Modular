@@ -266,7 +266,7 @@
     </div>
     <div x-component="counter" x-data>
         <h2>Counter</h2>
-        <p x-counter.duration.9s x-text="`Steps (${$counter.running ? 'running' : 'stopped'}): ${$counter.steps}`"></p>
+        <p x-counter.duration.9s="prefix = `Steps (${$counter.running ? 'running' : 'stopped'}): `" x-text="$counter.steps" x-text:prefix="prefix"></p>
     </div>
     <script src="dist/inlinejs-extended.js"></script>
     <script>

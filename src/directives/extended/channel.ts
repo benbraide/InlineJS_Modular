@@ -6,20 +6,14 @@ import { ExtendedDirectiveHandler } from "./generic";
 export class ChannelDirectiveHandler extends ExtendedDirectiveHandler{
     public constructor(echo: EchoGlobalHandler){
         super('channel', (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let options = {
+            let options = ExtendedDirectiveHandler.GetOptions({
                 private: false,
                 presence: false,
                 public: false,
                 notification: false,
                 listen: false,
                 bind: false,
-            };
-
-            directive.arg.options.forEach((option) => {
-                if (option in options){
-                    options[option] = true;
-                }
-            });
+            }, directive.arg.options);
 
             let channelName = directive.arg.key.replace(/\-/g, '.');
             if (options.bind){

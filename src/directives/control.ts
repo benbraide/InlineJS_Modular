@@ -1,4 +1,4 @@
-import { IRegion, IParsedAnimation, IDirective, DirectiveHandlerReturn } from '../typedefs'
+import { IRegion, IParsedAnimation, IDirective, DirectiveHandlerReturn, IElementScope } from '../typedefs'
 import { Region } from '../region'
 import { DirectiveHandler } from './generic'
 
@@ -10,6 +10,7 @@ export interface ControlInfo{
     blueprint: HTMLElement;
     animator: IParsedAnimation;
     subscriptions?: Record<string, Array<string>>;
+    insertItem?: (myRegion?: IRegion, callback?: (scope?: IElementScope, itemInfo?: ControlItemInfo) => void) => ControlItemInfo;
 }
 
 export interface ControlOnLoadInfo{
@@ -53,6 +54,22 @@ export class ControlHelper{
             parent: element.parentElement,
             animator: region.ParseAnimation(directive.arg.options, null, (animate || directive.arg.key === 'animate')),
             blueprint: (element.content.firstElementChild as HTMLElement),
+            insertItem(myRegion?: IRegion, callback?: (scope?: IElementScope, itemInfo?: ControlItemInfo) => void){
+                if (!(myRegion = (myRegion || Region.Get(this.regionId)))){
+                    return null;
+                }
+
+                return ControlHelper.InsertItem(myRegion, info, (myItemInfo) => {
+                    let scope = myRegion.GetElementScope(info.template), cloneScope = myRegion.GetElementScope(myItemInfo.clone);
+                    Object.entries(scope.locals).forEach(([key, item]) => {//Forward locals
+                        cloneScope.locals[key] = item;
+                    });
+
+                    if (callback){
+                        callback(cloneScope, myItemInfo);
+                    }
+                });
+            },
         };
 
         scope.uninitCallbacks.push(() => {
@@ -164,5 +181,35 @@ export class ControlHelper{
                 },
             }));
         });
+    }
+
+    public static GetConditionChange(scope: IElementScope, callback?: (alertChange?: (value: boolean) => void, list?: Array<(isTrue: boolean) => void>) => void){
+        if (!scope){
+            return null;
+        }
+        
+        let ifConditionChange: Array<(isTrue: boolean) => void>, callCallback = (list: Array<(isTrue: boolean) => void>) => {
+            callback((value) => {
+                ifConditionChange.forEach((callback) => {
+                    try{
+                        callback(value);
+                    } catch{}
+                });
+            }, list);
+        };
+        if (scope.ifConditionChange && scope.ifConditionChange.length > 0){
+            ifConditionChange = scope.ifConditionChange;
+            if (callback){
+                callCallback(ifConditionChange);
+            }
+        }
+        else{//Initialize if condition change list
+            ifConditionChange = (scope.ifConditionChange = new Array<(isTrue: boolean) => void>());
+            if (callback){
+                scope.postProcessCallbacks.push(() => callCallback(ifConditionChange));
+            }
+        }
+
+        return ifConditionChange;
     }
 }

@@ -17,7 +17,20 @@ export class OnDirectiveHandler extends DirectiveHandler{
                 mousemove: 'touchmove',
             };
 
-            let options = {
+            let keyOptions = {
+                meta: false,
+                alt: false,
+                ctrl: false,
+                shift: false,
+                list: null,
+            };
+            
+            let isKey = (directive.arg.key === 'keydown' || directive.arg.key === 'keyup'), debounce: number, isDebounced = false;
+            if (isKey){
+                keyOptions.list = new Array<string>();
+            }
+
+            let options = DirectiveHandler.GetOptions({
                 outside: false,
                 prevent: false,
                 stop: false,
@@ -27,41 +40,13 @@ export class OnDirectiveHandler extends DirectiveHandler{
                 window: false,
                 self: false,
                 nexttick: false,
-            };
+            }, directive.arg.options, (options, option, index) => {
+                if (option in options && typeof options[option] === 'boolean'){
+                    return false;
+                }
 
-            let keyOptions = {
-                meta: false,
-                alt: false,
-                ctrl: false,
-                shift: false,
-                list: null,
-            };
-            
-            let isKey = (directive.arg.key === 'keydown' || directive.arg.key === 'keyup'), debounce: number, debounceIsNext = false, isDebounced = false;
-            if (isKey){
-                keyOptions.list = new Array<string>();
-            }
-
-            directive.arg.options.forEach((option) => {
-                if (debounceIsNext){
-                    debounceIsNext = false;
-                    
-                    let debounceValue = DirectiveHandler.ExtractDuration(option, null);
-                    if (debounceValue !== null){
-                        debounce = debounceValue;
-                        return;
-                    }
-                }
-                
-                if (option in options){
-                    options[option] = true;
-                }
-                else if (option === 'away'){
-                    options.outside = true;
-                }
-                else if (option === 'debounce'){
-                    debounce = (debounce || 250);
-                    debounceIsNext = true;
+                if (option === 'debounce'){
+                    debounce = (((index < (directive.arg.options.length - 1)) ? DirectiveHandler.ExtractDuration(directive.arg.options[index + 1], null) : null) || debounce || 250);
                 }
                 else if (isKey && option in keyOptions){
                     keyOptions[option] = true;
@@ -70,7 +55,9 @@ export class OnDirectiveHandler extends DirectiveHandler{
                     let key = Region.GetProcessor().GetCamelCaseDirectiveName(option, true);
                     keyOptions.list.push(Region.GetConfig().MapKeyEvent(key) || key);
                 }
-            });
+
+                return true;
+            }, true);
 
             let regionId = region.GetId();
             let doEvaluation = (myRegion: IRegion, e: Event) => {

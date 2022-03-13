@@ -13,7 +13,7 @@ export declare class OverlayGlobalHandler extends GlobalHandler implements IOver
     private resizeHandler_;
     private state_;
     private styles_;
-    constructor(updateBody_?: boolean, padBody_?: boolean, styles?: Record<string, string>);
+    constructor(updateBody_?: boolean, padBody_?: string, styles?: Record<string, string>);
     SetZIndex(value: number): void;
     GetZIndex(): number;
     OffsetCount(offset: number): void;

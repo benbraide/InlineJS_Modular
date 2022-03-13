@@ -28,7 +28,7 @@ export class TextHelper{
             return;
         }
         
-        let onChange: (value: any) => void, options = {
+        let onChange: (value: any) => void, options = DirectiveHandler.GetOptions({
             ancestor: -1,
             nexttick: false,
             lazy: false,
@@ -45,7 +45,16 @@ export class TextHelper{
             fixedPoint: 0,
             prefix: '',
             suffix: '',
-        };
+        }, directive.arg.options, (options, option, index) => {
+            if (option === 'ancestor'){
+                options.ancestor = ((index < (directive.arg.options.length - 1)) ? (parseInt(directive.arg.options[index + 1]) || 0) : 0);
+                return true;
+            }
+
+            if (option === 'fixed'){
+                options.fixedPoint = ((index < (directive.arg.options.length - 1)) ? (parseInt(directive.arg.options[index + 1]) || 4) : 4);
+            }
+        }, true);
 
         let getTextPrefix = () => {
             let prefix = '';
@@ -133,27 +142,6 @@ export class TextHelper{
         else{//Unknown
             onChange = (value: any) => element.textContent = getTextValue(value);
         }
-
-        directive.arg.options.forEach((option, index) => {
-            if (!(option in options)){
-                return;
-            }
-
-            if (option === 'ancestor'){
-                if ((index + 1) < directive.arg.options.length){
-                    options.ancestor = (parseInt(directive.arg.options[index + 1]) || 0);
-                }
-                else{//Use parent
-                    options.ancestor = 0;
-                }
-            }
-            else if (typeof options[option] === 'boolean'){
-                options[option] = true;
-                if (option === 'fixed'){
-                    options.fixedPoint = (parseInt(directive.arg.options[index + 1]) || 0);
-                }
-            }
-        });
 
         let stepValue = (value: any, lastValue: any, fraction: number) => {
             if (fraction == 1 || value === lastValue){

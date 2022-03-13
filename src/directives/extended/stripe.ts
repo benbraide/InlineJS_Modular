@@ -88,16 +88,11 @@ export class StripeDirectiveHandler extends ExtendedDirectiveHandler{
                 return DirectiveHandlerReturn.Handled;
             }
 
-            let options = {
+            let options = ExtendedDirectiveHandler.GetOptions({
                 autofocus: false,
                 alert: false,
-            };
-
-            directive.arg.options.forEach((option) => {
-                if (option in options){
-                    options[option] = true;
-                }
-            });
+                nexttick: false,
+            }, directive.arg.options);
 
             let addField = (name: string, mount: HTMLElement, parent: HTMLElement, onChange: () => void) => {
                 let myRegion = Region.Get(regionId), mountScope = myRegion.AddElement(mount, true);
@@ -315,6 +310,14 @@ export class StripeDirectiveHandler extends ExtendedDirectiveHandler{
                     
                     element.dispatchEvent(new CustomEvent(`${this.key_}.after`));
                     setActive(false);
+
+                    let myRegion = Region.Get(regionId);
+                    if (options.nexttick && myRegion){
+                        myRegion.AddNextTickCallback(() => ExtendedDirectiveHandler.BlockEvaluate(Region.Get(regionId), element, directive.value));
+                    }
+                    else{
+                        ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
+                    }
                 }
                 else{//Error
                     onError(response.error.message);

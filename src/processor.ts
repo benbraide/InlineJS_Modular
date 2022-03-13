@@ -123,8 +123,12 @@ export class Processor implements IProcessor{
             return null;
         }
 
+        if ((value = value.trim()) === name){
+            value = '';
+        }
+
         let expanded = name;
-        switch (name.substr(0, 1)){
+        switch (name[0]){
         case ':':
             expanded = `${this.config_.GetDirectiveName('attr')}${name}`;
             break;
@@ -148,9 +152,9 @@ export class Processor implements IProcessor{
 
         let colonIndex = raw.indexOf(':'), options: Array<string>;
         if (colonIndex != -1){
-            options = raw.substr(colonIndex + 1).split('.');
+            options = raw.substring(colonIndex + 1).split('.');
             arg.key = options[0];
-            raw = raw.substr(0, colonIndex);
+            raw = raw.substring(0, colonIndex);
         }
         else{//No args
             options = raw.split('.');

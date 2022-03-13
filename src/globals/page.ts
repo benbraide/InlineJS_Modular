@@ -66,6 +66,9 @@ export class PageGlobalHandler extends GlobalHandler implements IPageGlobalHandl
                 else if (prop === 'persistent'){
                     this.persistent_ = value;
                 }
+                else if (prop === 'nextData'){
+                    this.SetNextPageData(value);
+                }
 
                 return true;
             });

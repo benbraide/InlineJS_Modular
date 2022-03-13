@@ -36,25 +36,6 @@ export interface NotificationsEvent extends NotificationsEntry{
 
 export type NotificationsEventHandler = (e?: NotificationsEvent) => boolean;
 
-interface NotificationsIconMap{
-    success: string;
-    warning: string;
-    error: string;
-    info: string;
-}
-
-interface NotificationsColorInfo{
-    text: string;
-    background: string;
-}
-
-interface NotificationsColorMap{
-    success: NotificationsColorInfo;
-    warning: NotificationsColorInfo;
-    error: NotificationsColorInfo;
-    info: NotificationsColorInfo;
-}
-
 export class NotificationsDirectiveHandler extends ExtendedDirectiveHandler{
     public constructor(notifications: NotificationsGlobalHandler){
         super(notifications.GetKey(), (region: IRegion, element: HTMLElement, directive: IDirective) => {
@@ -97,32 +78,6 @@ export class NotificationsGlobalHandler extends GlobalHandler{
 
     private targetHandlers_: Record<string, NotificationsEventHandler> = {};
     private actionHandlers_: Record<string, NotificationsEventHandler> = {};
-    
-    private iconMap_: NotificationsIconMap = {
-        success: '',
-        warning: '',
-        error: '',
-        info: '',
-    };
-
-    private colorMap_: NotificationsColorMap = {
-        success: {
-            text: 'rgb(5, 150, 105)',
-            background: 'rgb(236, 253, 245)',
-        },
-        warning: {
-            text: 'rgb(217, 119, 6)',
-            background: 'rgb(255, 251, 235)',
-        },
-        error: {
-            text: 'rgb(220, 38, 38)',
-            background: 'rgb(254, 242, 242)',
-        },
-        info: {
-            text: 'rgb(37, 99, 235)',
-            background: 'rgb(239, 246, 255)',
-        },
-    };
     
     public constructor(private echo_: EchoGlobalHandler, private auth_: IAuthGlobalHandler){
         super('notifications', null, null, () => {
@@ -189,13 +144,7 @@ export class NotificationsGlobalHandler extends GlobalHandler{
                         this.Listen(channelName);
                     }
                 }
-
-                if (prop === 'compile'){
-                    return (data: NotificationsData, isFirst = false, ancestor = 0, closeAction = '', iconMap?: NotificationsIconMap, colorMap?: NotificationsColorMap) => {
-                        return this.Compile(data, isFirst, ancestor, closeAction, iconMap, colorMap);
-                    };
-                }
-            }, ['items', 'count', 'unreadCount', 'connected', 'markAsRead', 'remove', 'clear', 'addTargetHandler', 'removeTargetHandler', 'addActiontHandler', 'removeActionHandler', 'listen', 'compile']);
+            }, ['items', 'count', 'unreadCount', 'connected', 'markAsRead', 'remove', 'clear', 'addTargetHandler', 'removeTargetHandler', 'addActiontHandler', 'removeActionHandler', 'listen']);
 
             this.listProxy_ = Region.CreateProxy((prop) => {
                 if (prop === '__InlineJS_Target__'){
@@ -215,32 +164,6 @@ export class NotificationsGlobalHandler extends GlobalHandler{
         });
 
         this.scopeId_ = GlobalHandler.region_.GenerateDirectiveScopeId(null, `_${this.key_}`);
-        this.iconMap_.success = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-check-circle" viewBox="0 0 16 16">
-                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
-            </svg>
-        `;
-
-        this.iconMap_.warning = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-exclamation-circle" viewBox="0 0 16 16">
-                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
-            </svg>
-        `;
-
-        this.iconMap_.error = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-bug" viewBox="0 0 16 16">
-                <path d="M4.355.522a.5.5 0 0 1 .623.333l.291.956A4.979 4.979 0 0 1 8 1c1.007 0 1.946.298 2.731.811l.29-.956a.5.5 0 1 1 .957.29l-.41 1.352A4.985 4.985 0 0 1 13 6h.5a.5.5 0 0 0 .5-.5V5a.5.5 0 0 1 1 0v.5A1.5 1.5 0 0 1 13.5 7H13v1h1.5a.5.5 0 0 1 0 1H13v1h.5a1.5 1.5 0 0 1 1.5 1.5v.5a.5.5 0 1 1-1 0v-.5a.5.5 0 0 0-.5-.5H13a5 5 0 0 1-10 0h-.5a.5.5 0 0 0-.5.5v.5a.5.5 0 1 1-1 0v-.5A1.5 1.5 0 0 1 2.5 10H3V9H1.5a.5.5 0 0 1 0-1H3V7h-.5A1.5 1.5 0 0 1 1 5.5V5a.5.5 0 0 1 1 0v.5a.5.5 0 0 0 .5.5H3c0-1.356.547-2.601 1.432-3.503l-.41-1.352a.5.5 0 0 1 .333-.623zM4 7v4a4 4 0 0 0 3.5 3.97V7H4zm4.5 0v7.97A4 4 0 0 0 12 11V7H8.5zM12 6a3.989 3.989 0 0 0-1.334-2.982A3.983 3.983 0 0 0 8 2a3.983 3.983 0 0 0-2.667 1.018A3.989 3.989 0 0 0 4 6h8z"/>
-            </svg>
-        `;
-
-        this.iconMap_.info = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
-                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                <path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
-            </svg>
-        `;
     }
 
     public Init(items: Array<NotificationsEntry> = null, refresh = false){
@@ -348,133 +271,6 @@ export class NotificationsGlobalHandler extends GlobalHandler{
         if (!handler || this.actionHandlers_[action] === handler){
             delete this.actionHandlers_[action];
         }
-    }
-
-    public Compile(data: NotificationsData, isFirst = false, ancestor = 0, closeAction = '', iconMap?: NotificationsIconMap, colorMap?: NotificationsColorMap){
-        if (data.html){//Prepared HTML
-            return data.html;
-        }
-        
-        iconMap = (iconMap || this.iconMap_);
-        colorMap = (colorMap || this.colorMap_);
-
-        let mappedColor = ((data.icon && data.icon in colorMap) ? (colorMap[data.icon] as NotificationsColorInfo) : colorMap.info), icon: string;
-        if (!data.iconHtml){
-            let iconContent: string;
-            if (data.icon && data.icon in iconMap){
-                iconContent = iconMap[data.icon];
-            }
-            else{//Use 'info' as default
-                iconContent = iconMap.info;
-            }
-
-            icon = `
-                <span style="color: ${mappedColor.text};">
-                    ${iconContent}
-                </span>
-            `;
-        }
-        else{
-            icon = data.iconHtml;
-        }
-
-        let iconContainer = `
-            <div style="margin-top: 8px;">
-                ${icon}
-            </div>
-        `;
-
-        let action = '', config = Region.GetConfig(), styles: Record<string, string> = {
-            'position': 'relative',
-            'width': '100%',
-            'display': 'flex',
-            'flex-direction': 'row',
-            'justify-content': 'flex-start',
-            'align-items': 'flex-start',
-            'padding': '4px 0 4px 8px',
-            'background-color': (data.backgroundColor ? data.backgroundColor : mappedColor.background),
-        };
-
-        let compileStyles = () => Object.entries(styles).reduce((prev, [key, value]) => (`${prev}${key}:${value};`), '');
-        if (data.action){
-            action = `${config.GetDirectiveName('on')}:click="${data.action}"`;
-            styles['cursor'] = 'pointer';
-        }
-
-        let intersection = '', closeActionValue: string;//inlinejs-notification-item
-        if (!closeAction){
-            if (!isFirst){
-                styles['border-top-width'] = '1px';
-            }
-
-            if (data.readOnVisible !== false){
-                intersection = `${config.GetDirectiveName('intersection')}.in.once="{ threshold: 0.5, root: $ancestor(${ancestor}) }"`;
-                intersection += ` ${config.GetDirectiveName('on')}:in.once="$notifications.markAsRead('${data.id}')"`;
-            }
-
-            closeActionValue = `$notifications.remove('${data.id}')`;
-        }
-        else{//External handler
-            closeActionValue = closeAction;
-        }
-
-        let closeIcon = `
-            <button type="button" style="position: absolute; top: 8px; right: 16px; font-size: 24px; font-weight: 700; background-color: transparent; color: rgb(153, 27, 27);"
-                ${config.GetDirectiveName('on')}:click.stop="${closeActionValue}">x</button>
-        `;
-        
-        if (data.bodyHtml){
-            return `
-                <div class="inlinejs-notification-item" style="${compileStyles()}" ${action} ${intersection}>
-                    ${iconContainer}
-                    ${data.bodyHtml}
-                    ${closeIcon}
-                </div>
-            `;
-        }
-
-        let body: string;
-        if (!data.body){
-            let title = '';
-            if (!data.titleHtml && data.title){
-                title = `
-                    <h3 class="title" style="padding-right: 16px; font-size: 18px; font-weight: 700;" x-text="'${data.title.replace(/\'/g, '\\\'')}'"></h3>
-                `;
-            }
-            else if (data.titleHtml){
-                title = data.titleHtml;
-            }
-            
-            let text = (data.textHtml || `<p class="text" style="margin-top: 4px; line-height: 1.25;">${data.text || 'Notification has no content.'}</p>`);
-            if (title){
-                body = `
-                    ${title}
-                    ${text}
-                `;
-            }
-            else{
-                body = text;
-            }
-        }
-        else{
-            body = data.body;
-        }
-
-        let bodyHtml = `
-            <div class="body" style="display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start; padding: 8px 16px 8px 8px;">
-                ${body}
-                <span class="timestamp" style="margin-top: 6px; font-size: 12px;"
-                    ${config.GetDirectiveName('timeago')}.caps="'${data.timestamp || ''}' || Date.now()" x-text="$timeago.label"></span>
-            </div>
-        `;
-
-        return `
-            <div class="inlinejs-notification-item" style="${compileStyles()}" ${action} ${intersection}>
-                ${iconContainer}
-                ${bodyHtml}
-                ${closeIcon}
-            </div>
-        `;
     }
 
     private Listen_(channelName: string | number){

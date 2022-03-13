@@ -63,16 +63,10 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
                 return DirectiveHandlerReturn.Handled;
             }
 
-            let options = {
+            let options = ExtendedDirectiveHandler.GetOptions({
                 readonly: false,
                 snow: false,
-            };
-
-            directive.arg.options.forEach((option) => {
-                if (option in options){
-                    options[option] = true;
-                }
-            });
+            }, directive.arg.options);
 
             let regionId = region.GetId(), scopeId = region.GenerateDirectiveScopeId(null, `_${this.key_}`);
             let toolbar: Record<string, QuillToolbarEntry> = {}, toolbarProxy: Record<string, any> = {};

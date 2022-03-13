@@ -7,6 +7,10 @@ interface DataStorageInfo{
     element?: HTMLElement;
 }
 
+type OptionsHandler1Type = ((option: string, index?: number, list?: Array<string>) => void | boolean);
+type OptionsHandler2Type<T> = ((options: T, option: string, index?: number, list?: Array<string>) => void | boolean);
+type OptionsHandlerType<T> = (OptionsHandler1Type | OptionsHandler2Type<T>);
+
 export class DirectiveHandler implements IDirectiveHandler{
     private dataStorage_: Record<string, DataStorageInfo> = {};
     private dataStorageCounter_ = 0;
@@ -183,20 +187,35 @@ export class DirectiveHandler implements IDirectiveHandler{
         }
     }
 
+    public static GetOptions<T>(options: T, specifiedOptions: Array<string>, handler?: OptionsHandler1Type, needsOptions?: false): T;
+    public static GetOptions<T>(options: T, specifiedOptions: Array<string>, handler?: OptionsHandler2Type<T>, needsOptions?: true): T;
+    public static GetOptions<T>(options: T, specifiedOptions: Array<string>, handler?: OptionsHandlerType<T>, needsOptions: boolean = false){
+        specifiedOptions.forEach((option, index, list) => {
+            if ((!handler || (needsOptions ? !(<OptionsHandler2Type<T>>handler)(options, option, index, list) : !(<OptionsHandler1Type>handler)(option, index, list))) && option in options && typeof options[option] === 'boolean'){
+                options[option] = true;
+            }
+        });
+
+        return options;
+    }
+    
     public static IsEventRequest(key: string){
         const requestList = ['bind', 'event', 'on'];
         return requestList.includes(key);
     }
 
     public static CheckEvents(key: string, region: IRegion, element: HTMLElement, directive: IDirective, defaultEvent?: string, events?: Array<string>){
-        const optionsWhitelist = ['outside', 'window', 'document'];
+        const optionsWhitelist = ['outside', 'window', 'document', 'once', 'nexttick'];
         
-        if (defaultEvent && (directive.arg.key === defaultEvent || DirectiveHandler.IsEventRequest(directive.arg?.key))){
-            return region.ForwardEventBinding(element, directive.value, directive.arg.options.filter(option => !optionsWhitelist.includes(option)), `${key}.${defaultEvent}`);
+        let options: Array<string> = null;
+        if (defaultEvent && (directive.arg.key === defaultEvent || DirectiveHandler.IsEventRequest(directive.arg.key))){
+            options = directive.arg.options.filter(option => !optionsWhitelist.includes(option));
+            return region.ForwardEventBinding(element, directive.value, options, `${key}.${defaultEvent}`);
         }
 
         if (events && events.includes(directive.arg.key)){
-            return region.ForwardEventBinding(element, directive.value, directive.arg.options.filter(option => !optionsWhitelist.includes(option)), `${key}.${directive.arg.key}`);
+            options = (options || directive.arg.options.filter(option => !optionsWhitelist.includes(option)));
+            return region.ForwardEventBinding(element, directive.value, options, `${key}.${directive.arg.key}`);
         }
 
         return DirectiveHandlerReturn.Nil;

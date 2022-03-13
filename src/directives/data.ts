@@ -12,14 +12,7 @@ export interface DataOptions{
 export class DataDirectiveHandler extends DirectiveHandler{
     public constructor(){
         super('data', (region: IRegion, element: HTMLElement, directive: IDirective) => {
-            let proxy = region.GetRootProxy().GetNativeProxy(), data: DataOptions;
-            if (directive.value.trim() === Region.GetConfig().GetDirectiveName(this.key_)){
-                data = ({} as DataOptions);
-            }
-            else{
-                data = (DirectiveHandler.Evaluate(region, element, directive.value, null, null, true) as DataOptions);
-            }
-            
+            let proxy = region.GetRootProxy().GetNativeProxy(), data = (DirectiveHandler.Evaluate(region, element, directive.value, null, null, true) as DataOptions);
             if (!Region.IsObject(data)){
                 data = ({} as DataOptions);
             }

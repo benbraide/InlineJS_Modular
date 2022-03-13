@@ -48,10 +48,6 @@ export class CounterDirectiveHandler extends ExtendedDirectiveHandler{
                     return;
                 }
 
-                ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value, 'counter', {
-                    steps: state.steps,
-                });
-
                 ++state.steps;
                 if (canRun()){
                     myRegion.GetChanges().AddComposed('steps', scopeId);
@@ -61,6 +57,13 @@ export class CounterDirectiveHandler extends ExtendedDirectiveHandler{
                     state.running = false;
                     myRegion.GetChanges().AddComposed('running', scopeId);
                 }
+
+                ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
+            };
+
+            let stepAndEvaluate = (myRegion: IRegion) => {
+                setTimeout(step, options.delay, ++state.checkpoint);
+                ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
             };
 
             let elementScope = region.AddElement(element, true);
@@ -78,9 +81,12 @@ export class CounterDirectiveHandler extends ExtendedDirectiveHandler{
                 if (prop === 'run'){
                     return () => {
                         if (!state.running && canRun()){
+                            let myRegion = Region.Get(regionId);
+                            
                             state.running = true;
-                            Region.Get(regionId).GetChanges().AddComposed('running', scopeId);
-                            setTimeout(step, options.delay, state.checkpoint);
+                            myRegion?.GetChanges()?.AddComposed('running', scopeId);
+                            
+                            stepAndEvaluate(myRegion);
                         }
                     };
                 }
@@ -88,48 +94,61 @@ export class CounterDirectiveHandler extends ExtendedDirectiveHandler{
                 if (prop === 'pause'){
                     return () => {
                         if (state.running){
+                            let myRegion = Region.Get(regionId);
+                            
                             state.running = false;
-                            Region.Get(regionId).GetChanges().AddComposed('running', scopeId);
+                            myRegion?.GetChanges()?.AddComposed('running', scopeId);
                             ++state.checkpoint;
+
+                            ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
                         }
                     };
                 }
 
                 if (prop === 'stop'){
                     return () => {
-                        if (state.running){
-                            state.running = false;
-                            Region.Get(regionId).GetChanges().AddComposed('running', scopeId);
-                            ++state.checkpoint;
+                        if (!state.running){
+                            return;
                         }
+                        
+                        let myRegion = Region.Get(regionId);
+                        
+                        state.running = false;
+                        myRegion?.GetChanges()?.AddComposed('running', scopeId);
 
+                        ++state.checkpoint;
                         if (state.steps != 0){
                             state.steps = 0;
-                            Region.Get(regionId).GetChanges().AddComposed('steps', scopeId);
+                            myRegion?.GetChanges()?.AddComposed('steps', scopeId);
                         }
+
+                        ExtendedDirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
                     };
                 }
 
                 if (prop === 'reset'){
                     return () => {
+                        let myRegion = Region.Get(regionId);
+                        if (!myRegion){
+                            return;
+                        }
+
                         if (state.steps != 0){
                             state.steps = 0;
-                            Region.Get(regionId).GetChanges().AddComposed('steps', scopeId);
+                            myRegion.GetChanges().AddComposed('steps', scopeId);
                         }
                         
                         if (!state.running){
                             state.running = true;
-                            Region.Get(regionId).GetChanges().AddComposed('running', scopeId);
-                            setTimeout(step, options.delay, state.checkpoint);
+                            myRegion.GetChanges().AddComposed('running', scopeId);
                         }
-                        else{//Replace current run
-                            setTimeout(step, options.delay, ++state.checkpoint);
-                        }
+
+                        stepAndEvaluate(myRegion);
                     };
                 }
             }, ['steps', 'running', 'run', 'pause', 'stop', 'reset']);
 
-            setTimeout(step, options.delay, ++state.checkpoint);
+            stepAndEvaluate(region);
             
             return DirectiveHandlerReturn.Handled;
         });

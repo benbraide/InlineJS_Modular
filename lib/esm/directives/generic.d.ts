@@ -1,4 +1,6 @@
 import { IDirectiveHandler, IDirective, DirectiveHandlerReturn, IRegion } from '../typedefs';
+declare type OptionsHandler1Type = ((option: string, index?: number, list?: Array<string>) => void | boolean);
+declare type OptionsHandler2Type<T> = ((options: T, option: string, index?: number, list?: Array<string>) => void | boolean);
 export declare class DirectiveHandler implements IDirectiveHandler {
     protected key_: string;
     private handler_;
@@ -24,6 +26,9 @@ export declare class DirectiveHandler implements IDirectiveHandler {
     static GetChildElementIndex(element: HTMLElement): number;
     static GetChildElementAt(region: IRegion, parent: HTMLElement, index: number, after?: HTMLElement): HTMLElement;
     static InsertOrAppendChildElement(region: IRegion, parent: HTMLElement, element: HTMLElement, index: number, after?: HTMLElement): void;
+    static GetOptions<T>(options: T, specifiedOptions: Array<string>, handler?: OptionsHandler1Type, needsOptions?: false): T;
+    static GetOptions<T>(options: T, specifiedOptions: Array<string>, handler?: OptionsHandler2Type<T>, needsOptions?: true): T;
     static IsEventRequest(key: string): boolean;
     static CheckEvents(key: string, region: IRegion, element: HTMLElement, directive: IDirective, defaultEvent?: string, events?: Array<string>): DirectiveHandlerReturn;
 }
+export {};

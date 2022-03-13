@@ -55,7 +55,8 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 return DirectiveHandlerReturn.Handled;
             }
             
-            let regionId = region.GetId(), scopeId = region.GenerateDirectiveScopeId(null, `_${this.key_}`), options = {
+            let regionId = region.GetId(), scopeId = region.GenerateDirectiveScopeId(null, `_${this.key_}`), middlewares = new Array<IFormMiddleware>();
+            let options = ExtendedDirectiveHandler.GetOptions({
                 refresh: false,
                 reload: false,
                 persistent: false,
@@ -67,17 +68,12 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 novalidate: false,
                 silent: false,
                 form: <HTMLFormElement>null,
-            };
-
-            let middlewares = new Array<IFormMiddleware>();
-            directive.arg.options.forEach((option) => {
-                if (option in options && typeof options[option] === 'boolean'){
-                    options[option] = true;
-                }
-                else if ((option = option.split('-').join('.')) in this.middlewares_){
+            }, directive.arg.options, (options, option) => {
+                if ((!(option in options) || typeof options[option] !== 'boolean') && (option = option.split('-').join('.')) in this.middlewares_){
                     middlewares.push(this.middlewares_[option]);
+                    return true;
                 }
-            });
+            }, true);
 
             let getAction: () => string, getMethod: () => string;
             if (element instanceof HTMLFormElement){
@@ -275,7 +271,7 @@ export class FormDirectiveHandler extends ExtendedDirectiveHandler{
                 }
 
                 if ((!options.success && !options.error) || (options.success && ok) || (options.error && !ok)){
-                    if (options.nexttick){
+                    if (options.nexttick && myRegion){
                         myRegion.AddNextTickCallback(() => evaluate(Region.Get(regionId), ok, data));
                     }
                     else{

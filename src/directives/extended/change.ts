@@ -17,6 +17,7 @@ export class ChangeDirectiveHandler extends ExtendedDirectiveHandler{
             if (directive.arg.key in properties){//Property specified
                 Object.keys(properties).forEach(key => (properties[key] = false));
                 properties[directive.arg.key] = true;
+                ExtendedDirectiveHandler.GetOptions(properties, directive.arg.options);
             }
 
             let regionId = region.GetId(), elementScope = region.AddElement(element, true), evaluate = (data: Record<string, any>) => {
@@ -33,7 +34,7 @@ export class ChangeDirectiveHandler extends ExtendedDirectiveHandler{
                 });
             }
 
-            if (properties.size){
+            if (properties.size){// TODO: Move ResizeObserver to element scope
                 let scopeId = region.GenerateDirectiveScopeId(null, `_${this.key_}`), observer = new ResizeObserver(regionId), key = '';
                 elementScope.uninitCallbacks.push(() => {
                     if (scopeId in this.observers_){

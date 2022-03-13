@@ -13,9 +13,14 @@ export class AncestorGlobalHandler extends SimpleGlobalHandler{
     }
 }
 
-export class SiblingGlobalHandler extends SimpleGlobalHandler{
+export class SiblingsGlobalHandler extends SimpleGlobalHandler{
     public constructor(){
-        super('sibling', (regionId: string) => (index: number, how = 'sequential') => Region.Get(regionId).GetElementAncestor(true, index));
+        super('siblings', SiblingsGlobalHandler.GetSiblings);
+    }
+
+    public static GetSiblings(regionId: string, contextElement: HTMLElement){
+        let parent = Region.Get(regionId)?.GetElementAncestor(true, 0);
+        return (parent ? [...parent.children].filter(child => (child !== contextElement)) : []);
     }
 }
 

@@ -17,48 +17,29 @@ export class IfDirectiveHandler extends DirectiveHandler{
                 return DirectiveHandlerReturn.Handled;
             }
             
-            let lastValue = false, itemInfo: ControlItemInfo = null, scope = region.GetElementScope(info.template);
-            if (!scope){
-                region.GetState().ReportError(`Failed to bind '${Region.GetConfig().GetDirectiveName(this.key_)}' to element`);
-                return DirectiveHandlerReturn.Handled;
-            }
-            
-            let ifConditionChange: Array<(isTrue: boolean) => void>, isFirstEntry = true;
-            let listen = () => {
+            let lastValue = false, itemInfo: ControlItemInfo = null, isFirstEntry = true;
+            let listen = (alertChange: (value: boolean) => void, ifConditionChange: Array<(isTrue: boolean) => void>) => {
                 info.subscriptions = region.GetState().TrapGetAccess(() => {
                     let myRegion = Region.Get(info.regionId);
                     if (!myRegion){
                         return false;
                     }
                     
-                    let value = !! DirectiveHandler.Evaluate(myRegion, element, directive.value), callListeners = (value: boolean) => {
-                        ifConditionChange.forEach((callback) => {
-                            try{
-                                callback(value);
-                            }
-                            catch{}
-                        });
-                    };
-                    
+                    let value = !! DirectiveHandler.Evaluate(myRegion, element, directive.value);
                     if (value != lastValue){
                         lastValue = value;
                         if (ifConditionChange.length > 0){
-                            callListeners(value);
+                            alertChange(value);
                         }
                         else if (value){//Insert into parent
-                            itemInfo = ControlHelper.InsertItem(myRegion, info, (myItemInfo) => {
-                                let scope = myRegion.GetElementScope(info.template), cloneScope = myRegion.GetElementScope(myItemInfo.clone);
-                                Object.entries(scope.locals).forEach(([key, item]) => {//Forward locals
-                                    cloneScope.locals[key] = item;
-                                });
-                            });
+                            itemInfo = info.insertItem(myRegion);
                         }
                         else if (itemInfo){
                             ControlHelper.RemoveItem(itemInfo, info);
                         }
                     }
                     else if (isFirstEntry && ifConditionChange.length > 0){
-                        callListeners(value);
+                        alertChange(value);
                     }
 
                     isFirstEntry = false;
@@ -67,13 +48,8 @@ export class IfDirectiveHandler extends DirectiveHandler{
                 }, true, null);
             };
 
-            if (scope.ifConditionChange && scope.ifConditionChange.length > 0){
-                ifConditionChange = scope.ifConditionChange;
-                listen();
-            }
-            else{//Initialize if condition change list
-                ifConditionChange = (scope.ifConditionChange = new Array<(isTrue: boolean) => void>());
-                scope.postProcessCallbacks.push(listen);
+            if (!ControlHelper.GetConditionChange(region.GetElementScope(info.template), listen)){
+                region.GetState().ReportError(`Failed to bind '${Region.GetConfig().GetDirectiveName(this.key_)}' to element`);
             }
             
             return DirectiveHandlerReturn.Handled;

@@ -17,19 +17,13 @@ export class IntersectionDirectiveHandler extends ExtendedDirectiveHandler{
                 ratio: 0,
             };
 
-            let options = {
+            let options = ExtendedDirectiveHandler.GetOptions({
                 once: false,
                 in: false,
                 out: false,
                 visible: false,
                 hidden: false,
-            };
-
-            directive.arg.options.forEach((option) => {
-                if (option in options){
-                    options[option] = true;
-                }
-            });
+            }, directive.arg.options);
 
             let regionId = region.GetId(), scopeId = this.GenerateScopeId_(region), setState = (key: string, value: boolean | number) => {
                 if (value == state[key]){

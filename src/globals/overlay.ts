@@ -61,7 +61,7 @@ export class OverlayGlobalHandler extends GlobalHandler implements IOverlayGloba
         zIndex: '',
     };
 
-    public constructor(private updateBody_ = false, private padBody_ = false, styles: Record<string, string> = null){
+    public constructor(private updateBody_ = false, private padBody_ = '', styles: Record<string, string> = null){
         super('overlay', null, null, () => {
             this.proxy_ = Region.CreateProxy((prop) => {
                 if (prop in this.state_){
@@ -194,7 +194,7 @@ export class OverlayGlobalHandler extends GlobalHandler implements IOverlayGloba
             GlobalHandler.region_.GetChanges().AddComposed('overflow', this.scopeId_);
 
             if (this.padBody_ && this.state_.overflow){
-                document.body.style.paddingRight = '1rem';
+                document.body.style.paddingRight = this.padBody_;
             }
             else if (this.padBody_){
                 document.body.style.paddingRight = '0';

@@ -42,26 +42,23 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                     message: '',
                 };
             };
-
-            let options = {
+            
+            let options = ExtendedDirectiveHandler.GetOptions({
                 delay: 750,
                 lazy: false,
                 submit: false,
                 extended: false,
                 form: (null as HTMLFormElement),
-            };
-
-            directive.arg.options.forEach((option, index) => {
-                if (option === 'delay' && index < (directive.arg.options.length - 1)){
-                    let delay = ExtendedDirectiveHandler.ExtractDuration(options[index + 1], null);
+            }, directive.arg.options, (options, option, index) => {
+                if (option === 'delay'){
+                    let delay = (index < (directive.arg.options.length - 1) ? ExtendedDirectiveHandler.ExtractDuration(directive.arg.options[index + 1], null) : 0);
                     if (delay && delay > 0){
                         options.delay = delay;
                     }
+
+                    return true;
                 }
-                else if (option in options && typeof options[option] === 'boolean'){
-                    options[option] = true;
-                }
-            });
+            }, true);
             
             const textInputList = ['text', 'password', 'email', 'search', 'number', 'tel', 'url'];
             let mount = (target: HTMLElement, targetInfo?: StateTargetInfo) => {

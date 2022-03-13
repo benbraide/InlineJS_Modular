@@ -20,18 +20,6 @@ export class ImageDirectiveHandler extends ExtendedDirectiveHandler{
                 return DirectiveHandlerReturn.Handled;
             }
 
-            let options = {
-                fit: false,
-                landscape: false,
-                overflow: false,
-                lazy: false,
-                pop: false,
-                zoom: false,
-                zoomMultiplier: 130,
-                zoomTarget: (element as HTMLElement),
-                ancestor: -1,
-            };
-
             let info = {
                 loaded: false,
                 zooming: false,
@@ -43,23 +31,27 @@ export class ImageDirectiveHandler extends ExtendedDirectiveHandler{
                 },
                 aspectRatio: ((element.naturalHeight == 0) ? 0 : (element.naturalWidth / element.naturalHeight)),
             };
-            
-            directive.arg.options.forEach((option, index, list) => {
-                if (option in options && typeof options[option] === 'boolean'){
-                    options[option] = true;
-                    if (option === 'zoom' && index < (list.length - 1)){
-                        options.zoomMultiplier = (parseInt(list[index + 1]) || 130);
-                    }
+
+            let options = ExtendedDirectiveHandler.GetOptions({
+                fit: false,
+                landscape: false,
+                overflow: false,
+                lazy: false,
+                pop: false,
+                zoom: false,
+                zoomMultiplier: 130,
+                zoomTarget: (element as HTMLElement),
+                ancestor: -1,
+            }, directive.arg.options, (options, option, index, list) => {
+                if (option === 'ancestor'){
+                    options.ancestor = ((index < (list.length - 1)) ? (parseInt(list[index + 1]) || 0) : 0);
+                    return true;
                 }
-                else if (option === 'ancestor'){
-                    if ((index + 1) < directive.arg.options.length){
-                        options.ancestor = (parseInt(directive.arg.options[index + 1]) || 0);
-                    }
-                    else{//Use parent
-                        options.ancestor = 0;
-                    }
+
+                if (option === 'zoom' && index < (list.length - 1)){
+                    options.zoomMultiplier = (parseInt(list[index + 1]) || 130);
                 }
-            });
+            }, true);
 
             let fit = () => {
                 if (!info.loaded){
