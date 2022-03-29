@@ -349,7 +349,7 @@ export class RouterGlobalHandler extends GlobalHandler implements IRouterGlobalH
 
             this.proxy_ = Region.CreateProxy((prop) => {
                 if (prop === 'doMount'){
-                    return () => this.Mount();
+                    return (load = true) => this.Mount(load);
                 }
                 
                 if (prop === 'active'){

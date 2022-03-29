@@ -23,7 +23,17 @@
 </head>
 <body>
     <template x-bind="$page.title = `${$router.title} | InlineJS`" x-data></template>
-    <h1 x-init="$router.register({path: '/', title: 'Home'})" x-text="$page.title" x-on:click="$alert.confirm('Hello World!', () => {})" x-data></h1>
+    <h1 x-init="$router.register({path: '/', title: 'Home'}); $router.doMount(false)" x-text="$page.title" x-on:click="$alert.confirm('Hello World!', () => {})" x-data></h1>
+
+    <template x-code x-data>
+        let greeting = 'Hello from the code world';
+        window.setTimeout(() => console.log(greeting), 3000);
+    </template>
+
+    <template x-code.trap.nexttick x-data>
+        console.log(`Current state: ${$component('first').state}`);
+    </template>
+    
     <div x-data x-overlay:click="$overlay.visible = false">
         <button x-on:click="$overlay.visible = true" x-bind="$overlay.overflow ? $$class($body).add('pad') : $$class($body).remove('pad')">Show Overlay</button>
     </div>
@@ -89,8 +99,30 @@
         <button x-on:click="range = ((range == 9) ? 18 : 9)">Change Range</button>
         <button x-on:click="$parent.setAttribute('x-init', '$console.log(this, `Executed attribute`)')">Insert Attribute</button>
     </div>
-    <div x-data="{list: {name: {first: 'Anon Legion', second:'Anon Legion2'}, email: {first:'anon.legion@crypt.co',second:'a@b.c'}, age: {first:27,second:45}, sex: {first:'MALE',second:'FEMALE'}}}">
-        <h2>Map Loop</h2>
+    <template x-component="map-loop-data" x-code:template="map-loop-data" x-data>
+        {
+            list: {
+                name: {
+                    first: 'Anon Legion',
+                    second:'Anon Legion2',
+                },
+                email: {
+                    first:'anon.legion@crypt.co',
+                    second:'a@b.c',
+                },
+                age: {
+                    first:27,
+                    second:45,
+                },
+                sex: {
+                    first:'MALE',
+                    second:'FEMALE',
+                }
+            }
+        }
+    </template>
+    <div x-data="$code.data('map-loop-data', 'map-loop-data')">
+        <h2 x-init="console.log($code.data('map-loop-data', 'map-loop-data'))">Map Loop</h2>
         <template x-each:animate.zoom-height="list as item">
             <div>
                 <span>Index: </span><strong x-text="$each.index"></strong> | 
@@ -259,7 +291,7 @@
                 <span>Same: </span><strong x-text="$state.same"></strong>
             </div>
             <div>
-                <button type="reset" x-on:click="$nextTick(() => {$state.reset()})">Reset</button>
+                <button type="reset">Reset</button>
                 <button class="ml-4 themed" :disabled="!$state.valid">Continue to payment</button>
             </div>
         </form>
@@ -268,7 +300,7 @@
         <h2>Counter</h2>
         <p x-counter.duration.9s="prefix = `Steps (${$counter.running ? 'running' : 'stopped'}): `" x-text="$counter.steps" x-text:prefix="prefix"></p>
     </div>
-    <script src="dist/inlinejs-extended.js"></script>
+    <script src="dist/inlinejs-animated.js"></script>
     <script>
         function typewriterList(){
             return [

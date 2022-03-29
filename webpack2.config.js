@@ -1,10 +1,10 @@
 const path = require('path');
 module.exports = {
    entry: {
-       "inlinejs": "./src/inlinejs.ts",
-       "inlinejs-extended": "./src/inlinejs-extended.ts",
-       "inlinejs-animated": "./src/inlinejs-animated.ts",
-       "inlinejs-custom": "./src/inlinejs-custom.ts"
+       "inlinejs.min": "./src/inlinejs.ts",
+       "inlinejs-extended.min": "./src/inlinejs-extended.ts",
+       "inlinejs-animated.min": "./src/inlinejs-animated.ts",
+       "inlinejs-custom.min": "./src/inlinejs-custom.ts"
    },
    output: {
        filename: "[name].js",
@@ -15,7 +15,5 @@ module.exports = {
    },
    module: {
        rules: [{ test: /\.ts$/, loader: "ts-loader" }]
-   },
-   mode: 'development',
-   devtool: false
+   }
 }

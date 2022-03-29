@@ -55,11 +55,9 @@ export class BindDirectiveHandler extends DirectiveHandler{
                 }
                 else if (!isQueued){
                     isQueued = true;
-
-                    let myRegion = Region.Get(regionId);
-                    myRegion.AddNextTickCallback(() => {
+                    Region.Get(regionId)?.AddNextTickCallback(() => {
                         isQueued = false;
-                        DirectiveHandler.BlockEvaluate(myRegion, element, directive.value);
+                        DirectiveHandler.BlockEvaluate(Region.Get(regionId), element, directive.value);
                     });
                 }
                 return true;

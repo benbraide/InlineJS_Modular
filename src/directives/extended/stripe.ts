@@ -92,6 +92,7 @@ export class StripeDirectiveHandler extends ExtendedDirectiveHandler{
                 autofocus: false,
                 alert: false,
                 nexttick: false,
+                manual: false,
             }, directive.arg.options);
 
             let addField = (name: string, mount: HTMLElement, parent: HTMLElement, onChange: () => void) => {
@@ -390,8 +391,8 @@ export class StripeDirectiveHandler extends ExtendedDirectiveHandler{
                 };
             };
 
-            let payOrSetup = (callback: () => void) => {
-                if (complete && !fields.find(field => !!field.error)){
+            let payOrSetup = (callback: () => void, hasPaymentMethod = false) => {
+                if (hasPaymentMethod || (complete && !fields.find(field => !!field.error))){
                     setActive(true);
                     element.dispatchEvent(new CustomEvent(`${this.key_}.before`));
                     callback();
@@ -402,6 +403,14 @@ export class StripeDirectiveHandler extends ExtendedDirectiveHandler{
             };
             
             elementScope.locals[`\$${this.key_}`] = ExtendedDirectiveHandler.CreateProxy((prop) => {
+                if (prop === 'bind'){
+                    return () => {
+                        if (!stripeInstance){
+                            bind();
+                        }
+                    };
+                }
+                
                 if (prop === 'active'){
                     Region.Get(regionId).GetChanges().AddGetAccess(`${scopeId}.${prop}`);
                     return active;
@@ -441,7 +450,7 @@ export class StripeDirectiveHandler extends ExtendedDirectiveHandler{
                     return (clientSecret: string, paymentMethod?: string | StripeBillingDetails, save = false) => {
                         payOrSetup(() => {
                             stripeInstance.confirmCardPayment(clientSecret, getPaymentDetails(paymentMethod, save)).then(onSuccess).catch(onError);
-                        });
+                        }, (paymentMethod && typeof paymentMethod === 'string'));
                     };
                 }
 
@@ -449,16 +458,53 @@ export class StripeDirectiveHandler extends ExtendedDirectiveHandler{
                     return (clientSecret: string, paymentMethod?: string | StripeBillingDetails, save = false) => {
                         payOrSetup(() => {
                             stripeInstance.confirmCardSetup(clientSecret, getPaymentDetails(paymentMethod, save)).then(onSuccess).catch(onError);
-                        });
+                        }, (paymentMethod && typeof paymentMethod === 'string'));
                     };
                 }
-            }, ['active', 'readyCount', 'complete', 'errors', 'instance', 'addField', 'pay', 'setup']);
+
+                if (prop === 'publicKey'){
+                    return publicKey;
+                }
+
+                if (prop === 'styles'){
+                    return styles;
+                }
+
+                if (prop === 'classes'){
+                    return classes;
+                }
+
+                if (prop === 'url'){
+                    return url;
+                }
+            }, ['bind', 'active', 'readyCount', 'complete', 'errors', 'instance', 'addField', 'pay', 'setup', 'publicKey', 'styles', 'classes', 'url'], (prop, value) => {
+                if (prop === 'publicKey'){
+                    publicKey = value;
+                }
+                else if (prop === 'styles'){
+                    styles = value;
+                }
+                else if (prop === 'classes'){
+                    classes = value;
+                }
+                else if (prop === 'url'){
+                    url = value;
+                }
+
+                return true;
+            });
             
-            if (resource){
-                resource.GetScript(url, init);
+            let bind = () => {
+                if (resource && url){
+                    resource.GetScript(url, init);
+                }
+                else{//Resource not provided
+                    init();
+                }
             }
-            else{//Resource not provided
-                init();
+
+            if (!options.manual){
+                bind();
             }
             
             return DirectiveHandlerReturn.Handled;

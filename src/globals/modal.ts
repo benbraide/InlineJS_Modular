@@ -39,6 +39,8 @@ export class ModalGlobalHandler extends GlobalHandler implements IModalGlobalHan
     
     public constructor(private overlay_: IOverlayGlobalHandler = null, private pathPrefix_ = '', hideOnOutsideClick = true, zIndex = 999){
         super('modal', null, null, () => {
+            Region.GetDirectiveManager().AddHandler(new ModalDirectiveHandler(this));
+            
             this.proxy_ = this.fetch_.props;
             if (this.overlay_ && hideOnOutsideClick){
                 this.overlay_.AddClickHandler(this.state_.onClick);
@@ -109,11 +111,23 @@ export class ModalGlobalHandler extends GlobalHandler implements IModalGlobalHan
                     return true;
                 }
 
-                return (prop === 'show');
+                return (prop === 'show' || prop === 'pathPrefix' || prop === 'hideOnOutsideClick' || prop === 'zIndex');
             },
             onPropSet: (prop, value) => {
                 if (prop === 'show'){
                     this.SetVisibility(!!value);
+                }
+                else if (prop === 'pathPrefix'){
+                    this.pathPrefix_ = value;
+                    if (this.pathPrefix_ && !this.pathPrefix_.startsWith('/')){
+                        this.pathPrefix_ = `/${this.pathPrefix_}`;
+                    }
+                }
+                else if (prop === 'hideOnOutsideClick'){
+                    hideOnOutsideClick = value;
+                }
+                else if (prop === 'zIndex'){
+                    zIndex = value;
                 }
             },
         }, FetchMode.Replace);

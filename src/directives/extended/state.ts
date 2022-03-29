@@ -13,8 +13,9 @@ interface StateInfo{
 
 interface StateTargetInfo{
     state: StateInfo;
-    childStates: Array<StateInfo>;
+    childStates: Array<StateTargetInfo>;
     updateState(key: string, value: any, requireAll: boolean): void;
+    reset(): void;
 }
 
 interface StateObserverInfo{
@@ -115,7 +116,7 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                         
                         [...target.children].forEach(child => mount((child as HTMLElement), myTargetInfo));
                         for (let state of myTargetInfo.childStates){
-                            if (!state.valid){
+                            if (!state.state.valid){
                                 setStateValue(myTargetInfo.state, 'valid', false);
                                 break;
                             }
@@ -124,15 +125,41 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                     
                     return myOptions;
                 }
+
+                let stoppedTyping = (submit = true) => {
+                    if (options.lazy){//Update validity
+                        (target as HTMLInputElement).setCustomValidity('');
+                        if (options.extended){
+                            myTargetInfo.updateState('message', (target as HTMLInputElement).validationMessage, null);
+                        }
+                        myTargetInfo.updateState('valid', (target as HTMLInputElement).validity.valid, true);
+                    }
+                    
+                    if (!myTargetInfo.state.typing){
+                        return;
+                    }
+                    
+                    myTargetInfo.updateState('typing', false, false);
+                    if (submit && options.submit && options.form && options.form.checkValidity()){
+                        options.form.submit();
+                    }
+                };
+
+                let checkValidity = () => {
+                    myTargetInfo.updateState('valid', (target as HTMLInputElement).validity.valid, true);
+                    if (options.extended){
+                        myTargetInfo.updateState('message', (target as HTMLInputElement).validationMessage, null);
+                    }
+                };
                 
                 let regionId = region.GetId(), scopeId = region.GenerateDirectiveScopeId(null, `_${this.key_}`), myTargetInfo: StateTargetInfo = {
                     state: getDefaultState(),
-                    childStates: new Array<StateInfo>(),
+                    childStates: new Array<StateTargetInfo>(),
                     updateState(key: string, value: any, requireAll: boolean){
                         let result: boolean;
                         if (myOptions.isUnknown){
-                            let truthCount = myTargetInfo.childStates.reduce((count, state) => (count + (state[key] ? 1 : 0)), 0);
-                            result = setStateValue(myTargetInfo.state, key, ((truthCount == 0) ? false : (truthCount == myTargetInfo.childStates.length || !requireAll)));
+                            let truthCount = this.childStates.reduce((count, state) => (count + (state[key] ? 1 : 0)), 0);
+                            result = setStateValue(this.state, key, ((truthCount == 0) ? false : (truthCount == this.childStates.length || !requireAll)));
                         }
                         else{//Set value
                             result = setStateValue(myTargetInfo.state, key, value);
@@ -140,6 +167,21 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
 
                         if (result && targetInfo && requireAll !== null){//Update ancestors
                             targetInfo.updateState(key, value, requireAll);
+                        }
+                    },
+                    reset(){
+                        if (!myOptions.isUnknown){
+                            checkValidity();
+                            stoppedTyping(false);
+                            
+                            myTargetInfo.updateState('dirty', false, false);
+                            if (options.extended){
+                                myOptions.value = '';
+                                myTargetInfo.updateState('same', ((target as HTMLInputElement).value === myOptions.value), true);
+                            }
+                        }
+                        else{
+                            myTargetInfo.childStates.forEach(child => child.reset());
                         }
                     },
                 };
@@ -169,43 +211,6 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                             myTargetInfo.updateState('message', (target as HTMLInputElement).validationMessage, null);
                         }
                     };
-
-                    let stoppedTyping = (submit = true) => {
-                        if (options.lazy){//Update validity
-                            (target as HTMLInputElement).setCustomValidity('');
-                            if (options.extended){
-                                myTargetInfo.updateState('message', (target as HTMLInputElement).validationMessage, null);
-                            }
-                            myTargetInfo.updateState('valid', (target as HTMLInputElement).validity.valid, true);
-                        }
-                        
-                        if (!myTargetInfo.state.typing){
-                            return;
-                        }
-                        
-                        myTargetInfo.updateState('typing', false, false);
-                        if (submit && options.submit && options.form && options.form.checkValidity()){
-                            options.form.submit();
-                        }
-                    };
-
-                    let checkValidity = () => {
-                        myTargetInfo.updateState('valid', (target as HTMLInputElement).validity.valid, true);
-                        if (options.extended){
-                            myTargetInfo.updateState('message', (target as HTMLInputElement).validationMessage, null);
-                        }
-                    };
-
-                    let formReset = () => {
-                        checkValidity();
-                        stoppedTyping(false);
-                        
-                        myTargetInfo.updateState('dirty', false, false);
-                        if (options.extended){
-                            myOptions.value = '';
-                            myTargetInfo.updateState('same', ((target as HTMLInputElement).value === myOptions.value), true);
-                        }
-                    };
                     
                     if (myOptions.canType){
                         target.addEventListener('input', onEvent);
@@ -216,10 +221,6 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                     }
 
                     target.addEventListener(`${this.form_.GetKey()}.validity`, checkValidity);
-                    if (options.form){
-                        options.form.addEventListener('reset', formReset);
-                        options.form.addEventListener(`${this.form_.GetKey()}.reset`, formReset);
-                    }
 
                     myTargetInfo.state.valid = (target as HTMLInputElement).validity.valid;
                     myTargetInfo.state.message = (target as HTMLInputElement).validationMessage;
@@ -232,7 +233,7 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                     }
 
                     for (let state of myTargetInfo.childStates){
-                        if (!state.valid){
+                        if (!state.state.valid){
                             myTargetInfo.state.valid = false;
                             break;
                         }
@@ -240,7 +241,7 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                 }
 
                 if (targetInfo){
-                    targetInfo.childStates.push(myTargetInfo.state);
+                    targetInfo.childStates.push(myTargetInfo);
                 }
                 
                 let proxyGetter = (prop: string) => {
@@ -304,19 +305,21 @@ export class StateDirectiveHandler extends ExtendedDirectiveHandler{
                         
                         return proxyGetter(prop);
                     }, [...proxyKeys, 'self'], proxySetter);
-                }
 
-                return myOptions;
+                    if (myOptions.isUnknown){//Observe
+                        this.AddObserverHandler_(element, () => mount(element));
+                        region.AddElement(element, true).uninitCallbacks.push(() => this.RemoveObserverHandler_(element));
+                    }
+                }
+                
+                return myTargetInfo;
             };
 
-            if (mount(element).isUnknown){//Observe
-                this.AddObserverHandler_(element, () => mount(element));
-                region.AddElement(element, true).uninitCallbacks.push(() => this.RemoveObserverHandler_(element));
+            if (options.form = (region.GetElementWith(element, target => (target instanceof HTMLFormElement)) as HTMLFormElement)){
+                options.form.addEventListener('reset', () => {});
             }
-            
-            if (options.submit){//Find form
-                options.form = (region.GetElementWith(element, target => (target instanceof HTMLFormElement)) as HTMLFormElement);
-            }
+
+            mount(element);
             
             return DirectiveHandlerReturn.Handled;
         });

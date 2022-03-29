@@ -241,10 +241,18 @@ export class QuillDirectiveHandler extends ExtendedDirectiveHandler{
                 if (prop === 'init'){
                     return init;
                 }
-            }, ['instance', 'container', 'addToolbarItem', 'init'], (prop, value) => {
+
+                if (prop === 'urls'){
+                    return urls;
+                }
+            }, ['instance', 'container', 'addToolbarItem', 'init', 'urls'], (prop, value) => {
                 if (prop === 'container' && !mounts.container){
                     mounts.container = value;
                     init();
+                }
+
+                if (prop === 'urls'){
+                    urls = value;
                 }
 
                 return true;

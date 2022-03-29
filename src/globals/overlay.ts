@@ -68,17 +68,33 @@ export class OverlayGlobalHandler extends GlobalHandler implements IOverlayGloba
                     GlobalHandler.region_.GetChanges().AddGetAccess(`${this.scopeId_}.${prop}`);
                     return this.state_[prop];
                 }
-            }, [...Object.keys(this.state_)], (prop, value) => {
-                if (typeof prop !== 'string'){
-                    return true;
+
+                if (prop === 'updateBody'){
+                    return this.updateBody_;
                 }
-                
+
+                if (prop === 'padBody'){
+                    return this.padBody_;
+                }
+
+                if (prop === 'styles'){
+                    return styles;
+                }
+            }, [...Object.keys(this.state_), 'updateBody', 'padBody', 'styles'], (prop, value) => {
                 if (prop === 'zIndex'){
                     this.SetZIndex((typeof value === 'number') ? value : (parseInt(value) || 0));
                 }
-
-                if (prop === 'visible'){
+                else if (prop === 'visible'){
                     this.OffsetCount(value ? 1 : -1);
+                }
+                else if (prop === 'updateBody'){
+                    this.updateBody_ = value;
+                }
+                else if (prop === 'padBody'){
+                    this.padBody_ = value;
+                }
+                else if (prop === 'styles'){
+                    styles = value;
                 }
 
                 return true;

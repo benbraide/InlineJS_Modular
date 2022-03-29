@@ -29,7 +29,7 @@ import {
 } from './globals/meta'
 import { ComponentKeyGlobalHandler, ComponentGlobalHandler, LocalsGlobalHandler, GetScopeGlobalHandler } from './globals/component'
 import { ProxyGlobalHandler, RefsGlobalHandler, RootGlobalHandler } from './globals/proxy'
-import { ParentGlobalHandler, AncestorGlobalHandler, SiblingGlobalHandler, FormGlobalHandler } from './globals/dom'
+import { ParentGlobalHandler, AncestorGlobalHandler, SiblingsGlobalHandler, FormGlobalHandler } from './globals/dom'
 import { ClassGlobalHandler } from './globals/class'
 import { WindowGlobalHandler, DocumentGlobalHandler, BodyGlobalHandler, ConsoleGlobalHandler, WindowAlertGlobalHandler } from './globals/window'
 import { ExpandEventGlobalHandler, DispatchEventGlobalHandler } from './globals/event'
@@ -87,7 +87,7 @@ Region.GetGlobalManager().AddHandler(new RootGlobalHandler());
 
 Region.GetGlobalManager().AddHandler(new ParentGlobalHandler());
 Region.GetGlobalManager().AddHandler(new AncestorGlobalHandler());
-Region.GetGlobalManager().AddHandler(new SiblingGlobalHandler());
+Region.GetGlobalManager().AddHandler(new SiblingsGlobalHandler());
 Region.GetGlobalManager().AddHandler(new FormGlobalHandler());
 
 Region.GetGlobalManager().AddHandler(new ClassGlobalHandler());
